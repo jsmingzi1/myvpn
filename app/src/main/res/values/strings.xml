@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">MyVPN</string>
+    <string name="address">Address</string>
+    <string name="textview">TextView</string>
+    <string name="port">Port</string>
+    <string name="secret">Secret</string>
+    <string name="disconnect">disconnect</string>
+    <string name="proxyport">Proxyport</string>
+    <string name="name">Name</string>
+    <string name="allowed">allowed</string>
+    <string name="disallowed">disallowed</string>
+    <string name="proxyhost">proxyhost</string>
+    <string name="_0_0_0_0">0.0.0.0</string>
+    <string name="_1080">1080</string>
+    <string name="connect">connect</string>
+    <string name="packages">Packages</string>
+    <string name="secret111">secret</string>
+    <string name="connecting">ToyVPN is connecting...</string>
+    <string name="connected">ToyVPN is connected!</string>
+    <string name="disconnected">ToyVPN is disconnected!</string>
+    <string name="incomplete_proxy_settings">
+        Incomplete proxy settings. For HTTP proxy we require both hostname and port settings.
+    </string>
+    <string name="unknown_package_names">
+        Some of the specified package names do not correspond to any installed packages.
+    </string>
+</resources>
