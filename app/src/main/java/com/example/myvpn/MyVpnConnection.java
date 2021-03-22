@@ -18,6 +18,8 @@ package com.example.myvpn;
 
 
 import android.app.PendingIntent;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.ProxyInfo;
 import android.net.VpnService;
@@ -96,11 +98,13 @@ public class MyVpnConnection implements Runnable {
     // Allowed/Disallowed packages for VPN usage
     private final boolean mAllow;
     private final Set<String> mPackages;
+    private final Context mContext;
+    private final SharedPreferences prefs;
 
     public MyVpnConnection(final VpnService service, final int connectionId,
                             final String serverName, final int serverPort, final byte[] sharedSecret,
                             final String proxyHostName, final int proxyHostPort, boolean allow,
-                            final Set<String> packages) {
+                            final Set<String> packages, Context ctxt) {
         mService = service;
         mConnectionId = connectionId;
 
@@ -117,6 +121,8 @@ public class MyVpnConnection implements Runnable {
         }
         mAllow = allow;
         mPackages = packages;
+        mContext = ctxt;
+        prefs = mContext.getSharedPreferences(MyVpnClient.Prefs.NAME, mContext.MODE_PRIVATE);
     }
 
     /**
@@ -184,6 +190,7 @@ public class MyVpnConnection implements Runnable {
                 throw new IllegalStateException("Cannot protect the tunnel");
             }
 
+            //prefs.edit().putString(MyVpnClient.Prefs.CONNECT_STATUS, "Connecting").commit();
             // Connect to the server.
             tunnel.connect(server);
 
@@ -196,7 +203,9 @@ public class MyVpnConnection implements Runnable {
 
             // Now we are connected. Set the flag.
             connected = true;
-
+            Log.d(getTag(), "now is connected");
+            //reportCompletion("");
+            //prefs.edit().putString(MyVpnClient.Prefs.CONNECT_STATUS, "Connected").commit();
             // Packets to be sent are queued in this input stream.
             FileInputStream in = new FileInputStream(iface.getFileDescriptor());
 

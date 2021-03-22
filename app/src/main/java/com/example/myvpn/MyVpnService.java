@@ -112,7 +112,7 @@ public class MyVpnService extends VpnService implements Handler.Callback {
         final int proxyPort = prefs.getInt(MyVpnClient.Prefs.PROXY_PORT, 0);
         startConnection(new MyVpnConnection(
                 this, mNextConnectionId.getAndIncrement(), server, port, secret,
-                proxyHost, proxyPort, allow, packages));
+                proxyHost, proxyPort, allow, packages, this));
     }
 
     private void startConnection(final MyVpnConnection connection) {
@@ -128,6 +128,7 @@ public class MyVpnService extends VpnService implements Handler.Callback {
             mConnectingThread.compareAndSet(thread, null);
             setConnection(new Connection(thread, tunInterface));
         });
+
         thread.start();
     }
 

@@ -12,7 +12,7 @@
     <string name="proxyhost">proxyhost</string>
     <string name="_0_0_0_0">0.0.0.0</string>
     <string name="_1080">1080</string>
-    <string name="connect">connect</string>
+    <string name="connect">Connect</string>
     <string name="packages">Packages</string>
     <string name="secret111">secret</string>
     <string name="connecting">ToyVPN is connecting...</string>
