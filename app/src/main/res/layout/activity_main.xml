@@ -51,6 +51,38 @@
             android:text="@string/connect"
             />
 
+        <ImageButton
+            android:id="@+id/imageButtonEditApps"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:visibility="invisible"
+            android:background="#00FF0000"
+            android:paddingTop="50dp"
+            android:clickable="false"
+            android:src="@android:drawable/ic_menu_edit" />
+
+        <RadioGroup
+            android:id="@+id/radiogroupmode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toLeftOf="@id/imageButtonEditApps"
+            >
+
+            <RadioButton
+                android:id="@+id/radioButtonGlobal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="20sp"
+                android:checked="true"
+                android:text="Global"/>
+            <RadioButton
+                android:id="@+id/radioButtonApps"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="20sp"
+                android:text="Apps"/>
+        </RadioGroup>
 
 
 

@@ -30,6 +30,8 @@ import android.util.Log;
 import android.util.Pair;
 import android.widget.Toast;
 
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Set;
@@ -102,17 +104,24 @@ public class MyVpnService extends VpnService implements Handler.Callback {
 
         // Extract information from the shared preferences.
         final SharedPreferences prefs = getSharedPreferences(MyVpnClient.Prefs.NAME, MODE_PRIVATE);
-        final String server = prefs.getString(MyVpnClient.Prefs.SERVER_ADDRESS, "");
+        final String server;// = prefs.getString(MyVpnClient.Prefs.SERVER_ADDRESS, "");
         final byte[] secret = prefs.getString(MyVpnClient.Prefs.SHARED_SECRET, "").getBytes();
-        final boolean allow = prefs.getBoolean(MyVpnClient.Prefs.ALLOW, true);
+        final boolean bGlobal = prefs.getBoolean(MyVpnClient.Prefs.GLOBAL, true);
         final Set<String> packages =
                 prefs.getStringSet(MyVpnClient.Prefs.PACKAGES, Collections.emptySet());
-        final int port = prefs.getInt(MyVpnClient.Prefs.SERVER_PORT, 0);
-        final String proxyHost = prefs.getString(MyVpnClient.Prefs.PROXY_HOSTNAME, "");
-        final int proxyPort = prefs.getInt(MyVpnClient.Prefs.PROXY_PORT, 0);
+        final int port;// = prefs.getInt(MyVpnClient.Prefs.SERVER_PORT, 0);
+
+        try {
+            JSONObject obj = new JSONObject(prefs.getString(MyVpnClient.Prefs.JSON_SERVER, ""));
+            server = obj.getString("ip");
+            port = obj.getInt("port");
+        } catch (Exception e) {
+            Toast.makeText(this, "MyVPNService connect failed for invalid server ip or port.", Toast.LENGTH_SHORT).show();
+            return;
+        }
         startConnection(new MyVpnConnection(
                 this, mNextConnectionId.getAndIncrement(), server, port, secret,
-                proxyHost, proxyPort, allow, packages, this));
+                bGlobal, packages));
     }
 
     private void startConnection(final MyVpnConnection connection) {

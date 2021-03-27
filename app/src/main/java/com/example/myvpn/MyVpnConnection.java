@@ -18,8 +18,6 @@ package com.example.myvpn;
 
 
 import android.app.PendingIntent;
-import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.ProxyInfo;
 import android.net.VpnService;
@@ -96,15 +94,13 @@ public class MyVpnConnection implements Runnable {
     private int mProxyHostPort;
 
     // Allowed/Disallowed packages for VPN usage
-    private final boolean mAllow;
+    private final boolean mGlobal;
     private final Set<String> mPackages;
-    private final Context mContext;
-    private final SharedPreferences prefs;
 
     public MyVpnConnection(final VpnService service, final int connectionId,
                             final String serverName, final int serverPort, final byte[] sharedSecret,
-                            final String proxyHostName, final int proxyHostPort, boolean allow,
-                            final Set<String> packages, Context ctxt) {
+                           final boolean bGlobal,
+                            final Set<String> packages) {
         mService = service;
         mConnectionId = connectionId;
 
@@ -112,17 +108,9 @@ public class MyVpnConnection implements Runnable {
         mServerPort= serverPort;
         mSharedSecret = sharedSecret;
 
-        if (!TextUtils.isEmpty(proxyHostName)) {
-            mProxyHostName = proxyHostName;
-        }
-        if (proxyHostPort > 0) {
-            // The port value is always an integer due to the configured inputType.
-            mProxyHostPort = proxyHostPort;
-        }
-        mAllow = allow;
+
+        mGlobal = bGlobal;
         mPackages = packages;
-        mContext = ctxt;
-        prefs = mContext.getSharedPreferences(MyVpnClient.Prefs.NAME, mContext.MODE_PRIVATE);
     }
 
     /**
@@ -361,20 +349,18 @@ public class MyVpnConnection implements Runnable {
 
         // Create a new interface using the builder and save the parameters.
         final ParcelFileDescriptor vpnInterface;
-        for (String packageName : mPackages) {
-            try {
-                Log.e(getTag(), "allow app parameters!!!!");
-                if (mAllow) {
-                    builder.addAllowedApplication(packageName);
-                    Toast.makeText(null, "allow apps", Toast.LENGTH_SHORT).show();
-                } else {
-                    builder.addDisallowedApplication(packageName);
-                    Toast.makeText(null, "allow all apps", Toast.LENGTH_SHORT).show();
+        if (mGlobal == false) {
+            for (String packageName : mPackages) {
+                try {
+                    Log.e(getTag(), "allow app parameters!!!!");
+                        builder.addAllowedApplication(packageName);
+                        Toast.makeText(null, "allow apps", Toast.LENGTH_SHORT).show();
+                } catch (PackageManager.NameNotFoundException e){
+                    Log.w(getTag(), "Package not available: " + packageName, e);
                 }
-            } catch (PackageManager.NameNotFoundException e){
-                Log.w(getTag(), "Package not available: " + packageName, e);
             }
         }
+
         builder.setSession(mServerName).setConfigureIntent(mConfigureIntent);
         if (!TextUtils.isEmpty(mProxyHostName)) {
             builder.setHttpProxy(ProxyInfo.buildDirectProxy(mProxyHostName, mProxyHostPort));
