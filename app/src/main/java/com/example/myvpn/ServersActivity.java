@@ -47,14 +47,15 @@ public class ServersActivity extends AppCompatActivity {
         switch (item.getItemId()){
             case android.R.id.home:
                 JSONObject obj = getSelectedServer();
+                if (obj != null) {
+                    Intent intent = new Intent();
+                    intent.putExtra("SelectedServer", obj.toString());
+                    Log.e("Error", "when1 return from serversactivity, obj is " + obj.toString());
 
-                Intent intent = new Intent();
-                intent.putExtra("SelectedServer", obj.toString());
-                Log.e("Error", "when1 return from serversactivity, obj is " + obj.toString());
-
-                setResult(RESULT_OK, intent);
-                super.onBackPressed();
-                break;
+                    setResult(RESULT_OK, intent);
+                    super.onBackPressed();
+                    break;
+                }
         }
         return true;
     }

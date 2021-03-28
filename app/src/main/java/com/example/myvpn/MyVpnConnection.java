@@ -19,12 +19,9 @@ package com.example.myvpn;
 
 import android.app.PendingIntent;
 import android.content.pm.PackageManager;
-import android.net.ProxyInfo;
 import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
-import android.text.TextUtils;
 import android.util.Log;
-import android.widget.Toast;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -46,6 +43,7 @@ public class MyVpnConnection implements Runnable {
      */
     public interface OnEstablishListener {
         void onEstablish(ParcelFileDescriptor tunInterface);
+        void onDisestablish(ParcelFileDescriptor tunInterface);
     }
 
     /** Maximum packet size is constrained by the MTU, which is given as a signed short. */
@@ -89,10 +87,6 @@ public class MyVpnConnection implements Runnable {
     private PendingIntent mConfigureIntent;
     private OnEstablishListener mOnEstablishListener;
 
-    // Proxy settings
-    private String mProxyHostName;
-    private int mProxyHostPort;
-
     // Allowed/Disallowed packages for VPN usage
     private final boolean mGlobal;
     private final Set<String> mPackages;
@@ -127,7 +121,7 @@ public class MyVpnConnection implements Runnable {
     @Override
     public void run() {
         try {
-            Log.i(getTag(), "Starting");
+            Log.w(getTag(), "run Starting");
 
             // If anything needs to be obtained using the network, get it now.
             // This greatly reduces the complexity of seamless handover, which
@@ -148,8 +142,8 @@ public class MyVpnConnection implements Runnable {
                 // Sleep for a while. This also checks if we got interrupted.
                 Thread.sleep(3000);
             }
-            Log.i(getTag(), "Giving up");
-        } catch (IOException | InterruptedException | IllegalArgumentException e) {
+            Log.w(getTag(), "Giving up");
+        } catch (IOException | InterruptedException | IllegalArgumentException | IllegalStateException e) {
             Log.e(getTag(), "Connection failed, exiting", e);
         }
     }
@@ -169,7 +163,7 @@ public class MyVpnConnection implements Runnable {
         ParcelFileDescriptor iface = null;
         boolean connected = false;
         // Create a DatagramChannel as the VPN tunnel.
-        Log.d(getTag(), "lcm before try");
+        Log.w(getTag(), "lcm before try");
 
         try (DatagramChannel tunnel = DatagramChannel.open()) {
 
@@ -191,7 +185,7 @@ public class MyVpnConnection implements Runnable {
 
             // Now we are connected. Set the flag.
             connected = true;
-            Log.d(getTag(), "now is connected");
+            Log.w(getTag(), "now is connected");
             //reportCompletion("");
             //prefs.edit().putString(MyVpnClient.Prefs.CONNECT_STATUS, "Connected").commit();
             // Packets to be sent are queued in this input stream.
@@ -208,7 +202,7 @@ public class MyVpnConnection implements Runnable {
             //   - when data has not been received in a while, assume the connection is broken.
             long lastSendTime = System.currentTimeMillis();
             long lastReceiveTime = System.currentTimeMillis();
-            Log.d(getTag(), "lcm before while");
+            Log.w(getTag(), "lcm before while");
             // We keep forwarding packets till something goes wrong.
             while (true) {
                 // Assume that we did not make any progress in this iteration.
@@ -219,7 +213,7 @@ public class MyVpnConnection implements Runnable {
                 if (length > 0) {
                     // Write the outgoing packet to the tunnel.
                     //DatagramPacket dp = new DatagramPacket(packet.array(), length);
-                    Log.d(getTag(), "lcm Address is "+length+","+bytesToHex(packet.array(), length));
+                    Log.i(getTag(), "lcm Address is "+length+","+bytesToHex(packet.array(), length));
                     packet.limit(length);
                     tunnel.write(packet);
                     packet.clear();
@@ -228,12 +222,12 @@ public class MyVpnConnection implements Runnable {
                     idle = false;
                     lastReceiveTime = System.currentTimeMillis();
                 }
-                Log.d(getTag(), "lcm 1Address is out");
+                Log.i(getTag(), "lcm 1Address is out");
                 //DatagramPacket dp = new DatagramPacket(packet, length);
                 // Read the incoming packet from the tunnel.
                 length = tunnel.read(packet);
                 if (length > 0) {
-                    Log.d(getTag(), "lcm Address is return "+length+","+bytesToHex(packet.array(), length));
+                    Log.i(getTag(), "lcm Address is return "+length+","+bytesToHex(packet.array(), length));
 
                     // Ignore control messages, which start with zero.
                     if (packet.get(0) != 0) {
@@ -265,7 +259,7 @@ public class MyVpnConnection implements Runnable {
                         lastSendTime = timeNow;
                     } else if (lastReceiveTime + RECEIVE_TIMEOUT_MS <= timeNow) {
                         // We are sending for a long time but not receiving.
-                        throw new IllegalStateException("Timed out");
+                        throw new IllegalStateException("1Timed out");
                     }
                 }
             }
@@ -277,6 +271,13 @@ public class MyVpnConnection implements Runnable {
                     iface.close();
                 } catch (IOException e) {
                     Log.e(getTag(), "Unable to close interface", e);
+                }
+            }
+
+            synchronized (mService) {
+                if (mOnEstablishListener != null) {
+                    mOnEstablishListener.onDisestablish(iface);
+                    Log.w(getTag(), "disconnect in run function/timeout");
                 }
             }
         }
@@ -316,7 +317,7 @@ public class MyVpnConnection implements Runnable {
                 return configure(new String(packet.array(), 1, length - 1, US_ASCII).trim());
             }
         }
-        throw new IOException("Timed out");
+        throw new IOException("2Timed out");
     }
 
     private ParcelFileDescriptor configure(String parameters) throws IllegalArgumentException {
@@ -349,12 +350,14 @@ public class MyVpnConnection implements Runnable {
 
         // Create a new interface using the builder and save the parameters.
         final ParcelFileDescriptor vpnInterface;
+
+        Log.w("myvpnconnevtion", "global parameter is " + mGlobal);
         if (mGlobal == false) {
             for (String packageName : mPackages) {
                 try {
-                    Log.e(getTag(), "allow app parameters!!!!");
+                    Log.e(getTag(), "allow app parameters!!!!" + packageName);
                         builder.addAllowedApplication(packageName);
-                        Toast.makeText(null, "allow apps", Toast.LENGTH_SHORT).show();
+                        //Toast.makeText(mService, "allow apps", Toast.LENGTH_SHORT).show();
                 } catch (PackageManager.NameNotFoundException e){
                     Log.w(getTag(), "Package not available: " + packageName, e);
                 }
@@ -362,16 +365,14 @@ public class MyVpnConnection implements Runnable {
         }
 
         builder.setSession(mServerName).setConfigureIntent(mConfigureIntent);
-        if (!TextUtils.isEmpty(mProxyHostName)) {
-            builder.setHttpProxy(ProxyInfo.buildDirectProxy(mProxyHostName, mProxyHostPort));
-        }
+
         synchronized (mService) {
             vpnInterface = builder.establish();
             if (mOnEstablishListener != null) {
                 mOnEstablishListener.onEstablish(vpnInterface);
             }
         }
-        Log.i(getTag(), "New interface: " + vpnInterface + " (" + parameters + ")");
+        Log.w(getTag(), "New interface: " + vpnInterface + " (" + parameters + ")");
         return vpnInterface;
     }
 

@@ -1,13 +1,15 @@
 package com.example.myvpn;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.net.VpnService;
 import android.os.Bundle;
-import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.RadioButton;
@@ -16,6 +18,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import org.json.JSONObject;
 
@@ -25,54 +28,32 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class MyVpnClient extends AppCompatActivity {
     public interface Prefs {
-        String NAME = "connection";
+        String PREF_NAME = "connection";
         String SHARED_SECRET = "shared.secret";
         String GLOBAL = "global";
         String PACKAGES = "packages";
         String JSON_SERVER="jsonserver";
     }
-
+    private final int MYVPN_SERVICE_REQUEST = 9;
     private final int SELECT_APP_PACKAGES_REQUEST = 10;
     private final int SELECT_SERVER_REQUEST = 11;
     private SharedPreferences prefs ;
 
-        private Handler handler = new Handler();
-        private String mConnect_Status = "Connect";
-        private Runnable runnable = new Runnable() {
-            public void run() {
-                this.update();
-                handler.postDelayed(this, 1000);// 间隔120秒
-            }
+    public static final String action_vpnservice_connect = "com.example.myvpn.LOCAL_BROADCAST_CONNECT";
+    public static final String action_vpnservice_disconnect = "com.example.myvpn.LOCAL_BROADCAST_DISCONNECT";
+    public static LocalBroadcastManager localBroadcastManager;
+    private LocalReceiver localReceiver;
+    private boolean bConnect = false; //whether vpn is connected, value is set in local broadcase receiver which receives action from myvpnservice.
 
-            void update() {
-                //刷新msg的内容
-                Boolean bVpn = vpn();
-                if (mConnect_Status == "Connect" && bVpn)
-                {
-                    mConnect_Status = "Success";
-                    ((android.widget.Button)findViewById(R.id.connect)).setText(mConnect_Status);
-                    Drawable top = getResources().getDrawable(R.mipmap.select03, null);
-                    ((android.widget.Button)findViewById(R.id.connect)).setCompoundDrawablesWithIntrinsicBounds(null, top , null, null);
 
-                }
-
-                if (mConnect_Status == "Success" && bVpn==false)
-                {
-                    mConnect_Status = "Connect";
-                    ((android.widget.Button)findViewById(R.id.connect)).setText(mConnect_Status);
-                    Drawable top = getResources().getDrawable(R.mipmap.power, null);
-                    ((android.widget.Button)findViewById(R.id.connect)).setCompoundDrawablesWithIntrinsicBounds(null, top , null, null);
-
-                }
-            }
-        };
         @Override
         public void onDestroy() {
-            handler.removeCallbacks(runnable);
+            localBroadcastManager.unregisterReceiver(localReceiver);
             super.onDestroy();
         }
 
@@ -82,34 +63,97 @@ public class MyVpnClient extends AppCompatActivity {
             super.onCreate(savedInstanceState);
             setContentView(R.layout.activity_main);
 
-        prefs = getSharedPreferences(Prefs.NAME, MODE_PRIVATE);
+            prefs = getSharedPreferences(Prefs.PREF_NAME, MODE_PRIVATE);
+            prefs.edit().putString(Prefs.SHARED_SECRET, "test").commit();
 
-        findViewById(R.id.connect).setOnClickListener(v -> {
+            //set local broadreceiver to receive the actions from myvpnservice(connect or disconnect
+            localReceiver = new LocalReceiver();
+            localBroadcastManager = LocalBroadcastManager.getInstance(this);
+            IntentFilter intentFilter = new IntentFilter();
+            intentFilter.addAction(action_vpnservice_connect);
+            intentFilter.addAction(action_vpnservice_disconnect);
+            localBroadcastManager.registerReceiver(localReceiver, intentFilter);
 
-            RadioButton radioButtonGlobal = (RadioButton) findViewById(R.id.radioButtonGlobal);
-            if (radioButtonGlobal.isChecked()) {
-                prefs.edit().putBoolean(Prefs.GLOBAL, true).commit();
+            //click connect button
+            setButton4Connect();
+
+            //button to show vpn servers list
+            setButton4ServersList();
+
+            //setup for global or app packages modes
+            RadioGroup radioGroup = (RadioGroup)findViewById(R.id.radiogroupmode);
+            radioGroup.setOnCheckedChangeListener((group, optionId)->{
+                if (optionId == R.id.radioButtonApps) {
+                    findViewById(R.id.imageButtonEditApps).setVisibility(View.VISIBLE);
+                    prefs.edit().putBoolean(Prefs.GLOBAL, false).commit();
+                }
+                else {
+                    findViewById(R.id.imageButtonEditApps).setVisibility(View.INVISIBLE);
+                    prefs.edit().putBoolean(Prefs.GLOBAL, true).commit();
+                }
+
+            });
+            if (prefs.getBoolean(Prefs.GLOBAL, true)) {
+                ((RadioButton) findViewById(R.id.radioButtonGlobal)).setSelected(true);
+                Log.w("myvpnclient create function", "global is true");
             }
             else {
-                Set<String> pkg = prefs.getStringSet(Prefs.PACKAGES, null);
-                if (pkg != null && pkg.size() > 0) {
-                    boolean bChanged = false;
-                    for (String str : pkg) {
-                        if (isPackageExisted(str) != false) {
-                            pkg.remove(str);
-                            bChanged = true;
-                        }
-                    }
-
-                    if (bChanged) {
-                        prefs.edit()
-                                .putBoolean(Prefs.GLOBAL, false)
-                                .putStringSet(Prefs.PACKAGES, pkg)
-                                .commit();
-                    }
-                }
+                ((RadioButton) findViewById(R.id.radioButtonApps)).setChecked(true);
+                Log.w("myvpnclient create function", "global is false");
             }
 
+
+            Map<String, ?> all = prefs.getAll();
+            for (Map.Entry<String, ?> entry : all.entrySet()) {
+                Log.w("main map values", entry.getKey() + ": " + entry.getValue().toString());
+            }
+
+            // choose app button for non-global packages mode
+            findViewById(R.id.imageButtonEditApps).setOnClickListener(v-> {
+                Intent intent = new Intent(MyVpnClient.this, SelectAppActivity.class);
+                Set<String> set = prefs.getStringSet(Prefs.PACKAGES, Collections.emptySet());
+                ArrayList<String> packages = new ArrayList<>(set);
+                //Log.e("ERROR", "start select app activity with input size " + packages.size());
+                intent.putStringArrayListExtra("SelectedPackages", packages);
+                startActivityForResult(intent, SELECT_APP_PACKAGES_REQUEST);
+            });
+
+    }
+
+
+    private void setButton4ServersList()
+    {
+        //first init the default vpn server
+        String servername = "No Invalidate Server!";
+        String strobj = prefs.getString(Prefs.JSON_SERVER, "");
+        if (strobj != null && strobj.length() > 0) {
+            try {
+                JSONObject obj = new JSONObject(strobj);
+                servername = obj.getString("name");
+            }catch (Exception e) {}
+        }
+        Log.w("setButton4ServersList", "default server name is "+servername);
+        ((TextView) findViewById(R.id.textViewRoute)).setText(servername);
+
+
+        findViewById(R.id.imageButtonRoute).setOnClickListener(v -> {
+            //provide multiple connections for choice
+            Toast.makeText(MyVpnClient.this, "No Spare Connections Avaliable", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(MyVpnClient.this, ServersActivity.class);
+            String strObj = prefs.getString(Prefs.JSON_SERVER, "");
+            if (strobj != null && strobj.length() > 0) {
+                try {
+                    JSONObject obj = new JSONObject(strobj);
+                    intent.putExtra("selectedId", obj.getInt("id"));
+                }catch (Exception e) {}
+            }
+
+            startActivityForResult(intent, SELECT_SERVER_REQUEST);
+        });
+    }
+
+    private void setButton4Connect() {
+        findViewById(R.id.connect).setOnClickListener(v -> {
             //verify server ip and port
             try {
                 JSONObject obj = new JSONObject(prefs.getString(Prefs.JSON_SERVER, ""));
@@ -120,73 +164,20 @@ public class MyVpnClient extends AppCompatActivity {
                 return;
             }
 
-            prefs.edit()
-                    //.putString(Prefs.SERVER_ADDRESS, "192.227.147.146")//serverAddress.getText().toString())
-                    //.putInt(Prefs.SERVER_PORT, 8000)//serverPortNum)
-                    .putString(Prefs.SHARED_SECRET, "test")//sharedSecret.getText().toString())
-                    .commit();
-
-            if (vpn()) {
+            if (bConnect) {
                 startService(getServiceIntent().setAction(MyVpnService.ACTION_DISCONNECT));
             }
             else {
+                ((android.widget.Button)findViewById(R.id.connect)).setText("Connecting");
                 Intent intent = VpnService.prepare(MyVpnClient.this);
                 if (intent != null) {
-                    startActivityForResult(intent, 0);
+                    startActivityForResult(intent, MYVPN_SERVICE_REQUEST);
                 } else {
-                    onActivityResult(0, RESULT_OK, null);
+                    onActivityResult(MYVPN_SERVICE_REQUEST, RESULT_OK, null);
                 }
             }
         });
-        /*findViewById(R.id.disconnect).setOnClickListener(v -> {
-            startService(getServiceIntent().setAction(MyVpnService.ACTION_DISCONNECT));
-        });*/
-
-        findViewById(R.id.imageButtonRoute).setOnClickListener(v -> {
-            //provide multiple connections for choice
-            Toast.makeText(MyVpnClient.this, "No Spare Connections Avaliable", Toast.LENGTH_SHORT).show();
-            Intent intent = new Intent(MyVpnClient.this, ServersActivity.class);
-            String strobj = prefs.getString(Prefs.JSON_SERVER, "");
-            if (strobj != null && strobj.length() > 0) {
-                try {
-                    JSONObject obj = new JSONObject(strobj);
-                    intent.putExtra("selectedId", obj.getInt("id"));
-                }catch (Exception e) {}
-            }
-
-            startActivityForResult(intent, SELECT_SERVER_REQUEST);
-        });
-
-        //setup for global and apps modes
-            RadioGroup radioGroup = (RadioGroup)findViewById(R.id.radiogroupmode);
-            radioGroup.setOnCheckedChangeListener((group, optionId)->{
-                if (optionId == R.id.radioButtonApps)
-                    findViewById(R.id.imageButtonEditApps).setVisibility(View.VISIBLE);
-                else
-                    findViewById(R.id.imageButtonEditApps).setVisibility(View.INVISIBLE);
-
-            });
-
-            findViewById(R.id.imageButtonEditApps).setOnClickListener(v-> {
-                Intent intent = new Intent(MyVpnClient.this, SelectAppActivity.class);
-                Set<String> set = prefs.getStringSet(Prefs.PACKAGES, Collections.emptySet());
-                ArrayList<String> packages = new ArrayList<>(set);
-                //Log.e("ERROR", "start select app activity with input size " + packages.size());
-                intent.putStringArrayListExtra("SelectedPackages", packages);
-                startActivityForResult(intent, SELECT_APP_PACKAGES_REQUEST);
-            });
-
-        handler.postDelayed(runnable, 1000);
     }
-
-    private boolean checkProxyConfigs(String proxyHost, String proxyPort) {
-        final boolean hasIncompleteProxyConfigs = proxyHost.isEmpty() != proxyPort.isEmpty();
-        if (hasIncompleteProxyConfigs) {
-            Toast.makeText(this, R.string.incomplete_proxy_settings, Toast.LENGTH_SHORT).show();
-        }
-        return !hasIncompleteProxyConfigs;
-    }
-
     private boolean isPackageExisted(String targetPackage){
         List<ApplicationInfo> packages;
         PackageManager pm;
@@ -203,15 +194,14 @@ public class MyVpnClient extends AppCompatActivity {
     @Override
     protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
-        Log.e("ERROR", "onActivityResult " + request + ", " + result);
+        Log.w("onActivityResult", "enter parameters " + request + ", " + result);
 
         if (request == SELECT_APP_PACKAGES_REQUEST) {
-            //Log.e("ERROR", "return 1 from selectappactivity " + result);
-                if (data != null) {
+             if (data != null) {
                     ArrayList<String> packages = data.getStringArrayListExtra("SelectedPackages");
                     Set<String> setPackages = new HashSet<String>(packages);
                     prefs.edit().putStringSet(Prefs.PACKAGES, setPackages).commit();
-             //       Log.e("ERROR", "return from selectappactivity " + packages.size());
+                    Log.w("onActivityResult", "return from selectappactivity " + packages.size());
                 }
         }
         else if (request==SELECT_SERVER_REQUEST) {
@@ -224,20 +214,25 @@ public class MyVpnClient extends AppCompatActivity {
                             obj.getString("name");
                             ((TextView) findViewById(R.id.textViewRoute)).setText(obj.getString("name"));
                             prefs.edit().putString(Prefs.JSON_SERVER, obj.toString()).commit();
-                            Log.e("error", "select server result " + obj.toString());
+                            Log.w("onActivityResult", "select server result " + obj.toString());
                         }
                     } catch (Exception e) {}
                 }
             }
         }
-        else if (result == RESULT_OK) {
-            Toast.makeText(this, "before start service", Toast.LENGTH_SHORT).show();
+        else if (request == MYVPN_SERVICE_REQUEST) {
+            //myvpnclient will start activity for myvpnservice, if the activity started, then can call startservice to real startup the service
+            //Toast.makeText(this, "before start service " + result, Toast.LENGTH_SHORT).show();
             startService(getServiceIntent().setAction(MyVpnService.ACTION_CONNECT));
-            Toast.makeText(this, "after start service", Toast.LENGTH_SHORT).show();
+            //Toast.makeText(this, "after start service", Toast.LENGTH_SHORT).show();
+        }
+        else
+        {
+            Log.w("onActivityResult", "onActivityResult else logic " + request + ", " + result);
         }
 
     }
-
+/*
     @Override
     protected void onStart() {
         super.onStart();
@@ -245,7 +240,7 @@ public class MyVpnClient extends AppCompatActivity {
             ((android.widget.Button)findViewById(R.id.connect)).setText("Disconnect");
         else
             ((android.widget.Button)findViewById(R.id.connect)).setText("Connect");
-    }
+    }*/
 
     private boolean vpn() {
         String iface = "";
@@ -253,7 +248,7 @@ public class MyVpnClient extends AppCompatActivity {
             for (NetworkInterface networkInterface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
                 if (networkInterface.isUp())
                     iface = networkInterface.getName();
-                Log.d("DEBUG", "IFACE NAME: " + iface);
+                Log.i("DEBUG", "IFACE NAME: " + iface);
                 if ( iface.contains("tun") || iface.contains("ppp") || iface.contains("pptp")) {
                     return true;
                 }
@@ -267,5 +262,25 @@ public class MyVpnClient extends AppCompatActivity {
 
     private Intent getServiceIntent() {
         return new Intent(this, MyVpnService.class);
+    }
+
+    class LocalReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.w("onReceive", "test:" + intent.getAction());
+            if (intent.getAction() == action_vpnservice_connect) {
+                ((android.widget.Button)findViewById(R.id.connect)).setText("Success");
+                Drawable top = getResources().getDrawable(R.mipmap.select03, null);
+                ((android.widget.Button)findViewById(R.id.connect)).setCompoundDrawablesWithIntrinsicBounds(null, top , null, null);
+                bConnect = true;
+            }
+            else if (intent.getAction() == action_vpnservice_disconnect) {
+                ((android.widget.Button)findViewById(R.id.connect)).setText("Connect");
+                Drawable top = getResources().getDrawable(R.mipmap.power, null);
+                ((android.widget.Button)findViewById(R.id.connect)).setCompoundDrawablesWithIntrinsicBounds(null, top , null, null);
+                bConnect = false;
+            }
+        }
     }
 }

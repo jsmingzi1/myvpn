@@ -69,6 +69,7 @@ public class MyVpnService extends VpnService implements Handler.Callback {
         // Create the intent to "configure" the connection (just start MyVpnClient).
         mConfigureIntent = PendingIntent.getActivity(this, 0, new Intent(this, MyVpnClient.class),
                 PendingIntent.FLAG_UPDATE_CURRENT);
+
     }
 
     @Override
@@ -90,6 +91,7 @@ public class MyVpnService extends VpnService implements Handler.Callback {
     @Override
     public boolean handleMessage(Message message) {
         Toast.makeText(this, message.what, Toast.LENGTH_SHORT).show();
+        Log.w("MyVPNService", "handleMessage: "+message.what);
         if (message.what != R.string.disconnected) {
             updateForegroundNotification(message.what);
         }
@@ -103,14 +105,14 @@ public class MyVpnService extends VpnService implements Handler.Callback {
         mHandler.sendEmptyMessage(R.string.connecting);
 
         // Extract information from the shared preferences.
-        final SharedPreferences prefs = getSharedPreferences(MyVpnClient.Prefs.NAME, MODE_PRIVATE);
-        final String server;// = prefs.getString(MyVpnClient.Prefs.SERVER_ADDRESS, "");
+        final SharedPreferences prefs = getSharedPreferences(MyVpnClient.Prefs.PREF_NAME, MODE_PRIVATE);
         final byte[] secret = prefs.getString(MyVpnClient.Prefs.SHARED_SECRET, "").getBytes();
         final boolean bGlobal = prefs.getBoolean(MyVpnClient.Prefs.GLOBAL, true);
-        final Set<String> packages =
-                prefs.getStringSet(MyVpnClient.Prefs.PACKAGES, Collections.emptySet());
-        final int port;// = prefs.getInt(MyVpnClient.Prefs.SERVER_PORT, 0);
 
+        Set<String> packages =
+                prefs.getStringSet(MyVpnClient.Prefs.PACKAGES, Collections.emptySet());
+        String server;
+        int port;
         try {
             JSONObject obj = new JSONObject(prefs.getString(MyVpnClient.Prefs.JSON_SERVER, ""));
             server = obj.getString("ip");
@@ -119,6 +121,8 @@ public class MyVpnService extends VpnService implements Handler.Callback {
             Toast.makeText(this, "MyVPNService connect failed for invalid server ip or port.", Toast.LENGTH_SHORT).show();
             return;
         }
+
+        Log.w("connect", "connect in myvpnservice global parameter is " + bGlobal + ", packages size is "+packages.size());
         startConnection(new MyVpnConnection(
                 this, mNextConnectionId.getAndIncrement(), server, port, secret,
                 bGlobal, packages));
@@ -131,12 +135,25 @@ public class MyVpnService extends VpnService implements Handler.Callback {
 
         // Handler to mark as connected once onEstablish is called.
         connection.setConfigureIntent(mConfigureIntent);
-        connection.setOnEstablishListener(tunInterface -> {
-            mHandler.sendEmptyMessage(R.string.connected);
 
-            mConnectingThread.compareAndSet(thread, null);
-            setConnection(new Connection(thread, tunInterface));
-        });
+        connection.setOnEstablishListener(
+                new MyVpnConnection.OnEstablishListener() {
+                    @Override
+                    public void onEstablish(ParcelFileDescriptor tunInterface) {
+                        mHandler.sendEmptyMessage(R.string.connected);
+                        mConnectingThread.compareAndSet(thread, null);
+                        setConnection(new Connection(thread, tunInterface));
+
+                        MyVpnClient.localBroadcastManager.sendBroadcast(new Intent(MyVpnClient.action_vpnservice_connect));
+                    }
+
+                    @Override
+                    public void onDisestablish(ParcelFileDescriptor tunInterface) {
+                        disconnect();
+                        MyVpnClient.localBroadcastManager.sendBroadcast(new Intent(MyVpnClient.action_vpnservice_disconnect));
+                    }
+                }
+        );
 
         thread.start();
     }
@@ -155,7 +172,7 @@ public class MyVpnService extends VpnService implements Handler.Callback {
                 oldConnection.first.interrupt();
                 oldConnection.second.close();
             } catch (IOException e) {
-                Log.e(TAG, "Closing VPN interface", e);
+                Log.w(TAG, "setConnection Closing VPN interface", e);
             }
         }
     }
