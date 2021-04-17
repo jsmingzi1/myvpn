@@ -3,7 +3,7 @@
 
 session_name smart
 welcome_info Happy New Year!
-global_mode false
+global_mode true
 firewall_mode false
 debug true
 
