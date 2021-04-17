@@ -60,7 +60,7 @@ public class MyVpnConnection implements Runnable {
     private static final long KEEPALIVE_INTERVAL_MS = TimeUnit.SECONDS.toMillis(15);
 
     /** Time to wait without receiving any response before assuming the server is gone. */
-    private static final long RECEIVE_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(20);
+    private static final long RECEIVE_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(40);
 
     /**
      * Time between polling the VPN interface for new traffic, since it's non-blocking.
@@ -213,32 +213,57 @@ public class MyVpnConnection implements Runnable {
                 if (length > 0) {
                     // Write the outgoing packet to the tunnel.
                     //DatagramPacket dp = new DatagramPacket(packet.array(), length);
-                    Log.i(getTag(), "lcm Address is "+length+","+bytesToHex(packet.array(), length));
+                    Log.i(getTag(), "lcm send for Address is "+length+","+bytesToHex(packet.array(), length));
+                    //Log.w(getTag(), "begin "+ length + " limit is "+packet.limit() + ", position is "+packet.position());
+                    //Packet.processPacket(packet.array(), 0, length, null);
+                    //Packet.IP ip = new Packet.IP(packet.array(), 0, length);
+                    //if (ip.protocol == 6) {
+                    //    if (Packet.TCP.isHTTP(packet.array(), ip.ihl, length-ip.ihl)) {
+                    //        Log.w(getTag(), "this is http request: " + Packet.TCP.getHttpHead(packet.array(), ip.ihl, length-ip.ihl));
+                    //    }
+                    //}
+                    //Log.w(getTag(), "middle1 limit is "+packet.limit() + ", position is "+packet.position());
+
                     packet.limit(length);
+                    //Log.w(getTag(), "middle2 limit is "+packet.limit() + ", position is "+packet.position());
+
                     tunnel.write(packet);
+                    //Log.w(getTag(), "middle3 limit is "+packet.limit() + ", position is "+packet.position());
+
                     packet.clear();
+                    //Log.w(getTag(), "end limit is "+packet.limit() + ", position is "+packet.position());
+
 
                     // There might be more outgoing packets.
                     idle = false;
-                    lastReceiveTime = System.currentTimeMillis();
+                    lastSendTime = System.currentTimeMillis();
                 }
                 Log.i(getTag(), "lcm 1Address is out");
                 //DatagramPacket dp = new DatagramPacket(packet, length);
                 // Read the incoming packet from the tunnel.
                 length = tunnel.read(packet);
                 if (length > 0) {
-                    Log.i(getTag(), "lcm Address is return "+length+","+bytesToHex(packet.array(), length));
-
+                    Log.i(getTag(), "lcm receive for Address is return "+length+","+bytesToHex(packet.array(), length));
                     // Ignore control messages, which start with zero.
                     if (packet.get(0) != 0) {
+                        //process http message
+                        try {
+                            Packet.processPacket(packet.array(), 0, length, out);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            Log.w("myvpnconnection", "failed when processPacket "+e.toString());
+                        }
+
                         // Write the incoming packet to the output stream.
                         out.write(packet.array(), 0, length);
+                    } else {
+                        Log.w("idle test", "receive one control msg.");
                     }
                     packet.clear();
 
                     // There might be more incoming packets.
                     idle = false;
-                    lastSendTime = System.currentTimeMillis();
+                    lastReceiveTime = System.currentTimeMillis();
                 }
 
                 // If we are idle or waiting for the network, sleep for a

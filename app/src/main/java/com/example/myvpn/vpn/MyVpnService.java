@@ -30,6 +30,8 @@ import android.util.Log;
 import android.util.Pair;
 import android.widget.Toast;
 
+import com.example.myvpn.ui.MyVpnClient;
+
 import org.json.JSONObject;
 
 import java.io.IOException;
