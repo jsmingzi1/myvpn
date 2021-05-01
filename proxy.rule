@@ -1,23 +1,20 @@
 #public String needProxy(String host, int ip, int protocol, int uid, String httpAction) {
 #this file used to judge connection if should use proxy for http/https, its main logic is called by above function
 #one row, one rule, within one rule, can use multiple conditions which seprated by semicolon, the multiple conditions within one line, is combined by and logic
-# <host|ip|protocol|uid|httpaction> exist --for int, exist means > 0, for String, exist means != null && length > 0
-# <host|ip|protocol|uid|httpaction> exist --for int, exist means > 0, for String, exist means != null && length > 0
-# <host|ip|protocol|uid|httpaction> <value>
-# <host|ip|protocol|uid|httpaction> [prefix|suffix|contain] <value>
+# <host|ip|protocol|uid|httpaction> exists --for int, exist means > 0, for String, exist means != null && length > 0
+# <host|ip|protocol|uid|httpaction> exists --for int, exist means > 0, for String, exist means != null && length > 0
+# <host|ip|protocol|uid|httpaction> [equals|prefix|suffix|contains] <value>
 # !<expression> --this will give reverse of expression
 #example:
-# host www.google.com
-# host prefix www.google.com
+# host equals www.google.com
+# host equals prefix www.google.com
 # host suffix google.com
-# ip 1.2.3.4
-# protocol TCP
-# protocol UDP
-# protocol All ---if for all, suggest not set this condition
-# uid 123
-# httpaction /getip/XXXX
+# ip equals 1.2.3.4
+# protocol equals TCP
+# protocol equals UDP
+# uid equals 123
+# httpaction equals /getip/XXXX
 # httpaction prefix /getip
-# httpaction 
 
 #for specify https, just need specify not exist action, use below
 # !httpaction exist
