@@ -20,3 +20,4 @@
 # !httpaction exist
 #for specify http
 # httpaction exist
+proxy http://121.4.240.117:443
