@@ -1,10 +1,10 @@
-package flowerwrong.github.com.smart.tunnel.shadowsocks;
+package com.example.myvpn.vpn.packet.proxy.tunnel.shadowsocks;
 
 import android.net.Uri;
 import android.util.Base64;
 
-import flowerwrong.github.com.smart.tunnel.Config;
-import flowerwrong.github.com.smart.tunnel.shadowsocks.crypto.CryptFactory;
+import com.example.myvpn.vpn.packet.proxy.tunnel.Config;
+import com.example.myvpn.vpn.packet.proxy.tunnel.shadowsocks.crypto.CryptFactory;
 
 import java.net.InetSocketAddress;
 

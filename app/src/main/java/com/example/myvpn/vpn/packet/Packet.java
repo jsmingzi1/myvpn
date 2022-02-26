@@ -1,6 +1,9 @@
-package com.example.myvpn;
+package com.example.myvpn.vpn.packet;
 
 import android.util.Log;
+
+import com.example.myvpn.Tools;
+import com.example.myvpn.gzipcls;
 
 import java.io.FileOutputStream;
 import java.util.ArrayList;

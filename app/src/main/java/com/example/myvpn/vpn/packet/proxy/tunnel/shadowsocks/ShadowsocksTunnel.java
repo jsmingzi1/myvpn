@@ -1,8 +1,8 @@
-package flowerwrong.github.com.smart.tunnel.shadowsocks;
+package com.example.myvpn.vpn.packet.proxy.tunnel.shadowsocks;
 
-import flowerwrong.github.com.smart.tunnel.Tunnel;
-import flowerwrong.github.com.smart.tunnel.shadowsocks.crypto.CryptFactory;
-import flowerwrong.github.com.smart.tunnel.shadowsocks.crypto.ICrypt;
+import com.example.myvpn.vpn.packet.proxy.tunnel.Tunnel;
+import com.example.myvpn.vpn.packet.proxy.tunnel.shadowsocks.crypto.CryptFactory;
+import com.example.myvpn.vpn.packet.proxy.tunnel.shadowsocks.crypto.ICrypt;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.Selector;

@@ -1,4 +1,4 @@
-package com.example.myvpn;
+package com.example.myvpn.ui;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -19,6 +19,9 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
+import com.example.myvpn.vpn.MyVpnService;
+import com.example.myvpn.R;
 
 import org.json.JSONObject;
 

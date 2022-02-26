@@ -1,4 +1,4 @@
-package flowerwrong.github.com.smart.tunnel;
+package com.example.myvpn.vpn.packet.proxy.tunnel;
 
 import java.net.InetSocketAddress;
 

@@ -1,4 +1,4 @@
-package flowerwrong.github.com.smart.dns;
+package com.example.myvpn.vpn.packet.proxy.dns;
 
 import com.google.common.base.Splitter;
 
@@ -34,6 +34,7 @@ public class DnsPacket {
 
         for (int i = 0; i < packet.Questions.length; i++) {
             packet.Questions[i] = Question.FromBytes(buffer);
+            //Log.w("DNS00-00", "before return packet, the domain is " + packet.Questions[i].Domain);
         }
 
         for (int i = 0; i < packet.Resources.length; i++) {
@@ -47,6 +48,8 @@ public class DnsPacket {
         for (int i = 0; i < packet.EResources.length; i++) {
             packet.EResources[i] = Resource.FromBytes(buffer);
         }
+        //Log.w("DNS00-0", "return packet");
+        //Log.w("DNS1 send", "raw data is "+ gzipcls.bytesToHexFun1(packet));
 
         return packet;
     }

@@ -11,25 +11,25 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyVPN">
         <activity
-            android:name=".ServersActivity"
+            android:name=".ui.ServersActivity"
             android:label="@string/title_activity_servers">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.example.myvpn.MyVpnClient" />
+                android:value="com.example.myvpn.ui.MyVpnClient" />
         </activity>
 
         <!--
                Set to true if your app is Standalone, that is, it does not require the handheld
                app to run.
         -->
-        <activity android:name=".SelectAppActivity">
+        <activity android:name=".ui.SelectAppActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.example.myvpn.MyVpnClient" />
+                android:value="com.example.myvpn.ui.MyVpnClient" />
         </activity>
 
         <activity
-            android:name=".MyVpnClient"
+            android:name=".ui.MyVpnClient"
             android:configChanges="orientation|keyboardHidden">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -41,7 +41,7 @@
 
 
         <service
-            android:name=".MyVpnService"
+            android:name=".vpn.MyVpnService"
             android:permission="android.permission.BIND_VPN_SERVICE">
             <intent-filter>
                 <action android:name="android.net.VpnService" />
@@ -56,6 +56,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
 
 
 </manifest>

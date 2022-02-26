@@ -1,4 +1,4 @@
-package flowerwrong.github.com.smart.dns;
+package com.example.myvpn.vpn.packet.proxy.dns;
 
 public class DnsFlags {
     public boolean QR;//1 bits

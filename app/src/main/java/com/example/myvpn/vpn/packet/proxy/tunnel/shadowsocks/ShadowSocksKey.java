@@ -1,4 +1,4 @@
-package flowerwrong.github.com.smart.tunnel.shadowsocks;
+package com.example.myvpn.vpn.packet.proxy.tunnel.shadowsocks;
 
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;

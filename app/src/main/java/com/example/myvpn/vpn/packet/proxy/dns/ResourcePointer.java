@@ -1,7 +1,7 @@
-package flowerwrong.github.com.smart.dns;
+package com.example.myvpn.vpn.packet.proxy.dns;
 
 
-import flowerwrong.github.com.smart.tcpip.CommonMethods;
+import com.example.myvpn.vpn.packet.proxy.tcpip.CommonMethods;
 
 public class ResourcePointer {
     static final short offset_Domain = 0;

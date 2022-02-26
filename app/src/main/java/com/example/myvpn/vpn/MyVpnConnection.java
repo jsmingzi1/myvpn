@@ -1,4 +1,4 @@
-package com.example.myvpn;
+package com.example.myvpn.vpn;
 
 /*
  * Copyright (C) 2017 The Android Open Source Project
@@ -23,6 +23,8 @@ import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 
+import com.example.myvpn.vpn.packet.PacketProcess;
+
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -45,6 +47,8 @@ public class MyVpnConnection implements Runnable {
         void onEstablish(ParcelFileDescriptor tunInterface);
         void onDisestablish(ParcelFileDescriptor tunInterface);
     }
+
+    public static MyVpnConnection Instance = null;
 
     /** Maximum packet size is constrained by the MTU, which is given as a signed short. */
     private static final int MAX_PACKET_SIZE = Short.MAX_VALUE;
@@ -91,6 +95,11 @@ public class MyVpnConnection implements Runnable {
     private final boolean mGlobal;
     private final Set<String> mPackages;
 
+    public String LOCAL_ADDRESS = "";
+    public FileOutputStream m_VPNOutputStream=null;
+    public ParcelFileDescriptor m_VPNInterface=null;
+
+
     public MyVpnConnection(final VpnService service, final int connectionId,
                             final String serverName, final int serverPort, final byte[] sharedSecret,
                            final boolean bGlobal,
@@ -105,6 +114,7 @@ public class MyVpnConnection implements Runnable {
 
         mGlobal = bGlobal;
         mPackages = packages;
+        Instance = this;
     }
 
     /**
@@ -128,6 +138,11 @@ public class MyVpnConnection implements Runnable {
             // tries to recreate the tunnel without shutting down everything.
             // In this demo, all we need to know is the server address.
             final SocketAddress serverAddress = new InetSocketAddress(mServerName, mServerPort);
+
+            //download config
+            MyVpnService.Instance.checkConfigFile(true);
+
+
 
             // We try to create the tunnel several times.
             // TODO: The better way is to work with ConnectivityManager, trying only when the
@@ -193,9 +208,14 @@ public class MyVpnConnection implements Runnable {
 
             // Packets received need to be written to this output stream.
             FileOutputStream out = new FileOutputStream(iface.getFileDescriptor());
-
+            m_VPNInterface = iface;
+            m_VPNOutputStream = out;
             // Allocate the buffer for a single packet.
             ByteBuffer packet = ByteBuffer.allocate(MAX_PACKET_SIZE);
+
+            //process packet
+            if (PacketProcess.Instance == null)
+                new PacketProcess();
 
             // Timeouts:
             //   - when data has not been sent in a while, send empty keepalive messages.
@@ -208,14 +228,19 @@ public class MyVpnConnection implements Runnable {
                 // Assume that we did not make any progress in this iteration.
                 boolean idle = true;
 
+                boolean bProcessed = false;
                 // Read the outgoing packet from the input stream.
                 int length = in.read(packet.array());
                 if (length > 0) {
                     // Write the outgoing packet to the tunnel.
                     //DatagramPacket dp = new DatagramPacket(packet.array(), length);
-                    Log.i(getTag(), "lcm send for Address is "+length+","+bytesToHex(packet.array(), length));
+                    //Log.i(getTag(), "lcm send for Address is "+length+","+bytesToHex(packet.array(), length));
                     //Log.w(getTag(), "begin "+ length + " limit is "+packet.limit() + ", position is "+packet.position());
-                    //Packet.processPacket(packet.array(), 0, length, null);
+                    try {
+                        bProcessed = PacketProcess.Instance.processPacket(true, packet.array(), 0, length, null);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                     //Packet.IP ip = new Packet.IP(packet.array(), 0, length);
                     //if (ip.protocol == 6) {
                     //    if (Packet.TCP.isHTTP(packet.array(), ip.ihl, length-ip.ihl)) {
@@ -227,37 +252,38 @@ public class MyVpnConnection implements Runnable {
                     packet.limit(length);
                     //Log.w(getTag(), "middle2 limit is "+packet.limit() + ", position is "+packet.position());
 
-                    tunnel.write(packet);
+                    if (bProcessed==false)
+                        tunnel.write(packet);
                     //Log.w(getTag(), "middle3 limit is "+packet.limit() + ", position is "+packet.position());
 
                     packet.clear();
                     //Log.w(getTag(), "end limit is "+packet.limit() + ", position is "+packet.position());
 
-
                     // There might be more outgoing packets.
                     idle = false;
                     lastSendTime = System.currentTimeMillis();
                 }
-                Log.i(getTag(), "lcm 1Address is out");
+                //Log.i(getTag(), "lcm 1Address is out");
                 //DatagramPacket dp = new DatagramPacket(packet, length);
                 // Read the incoming packet from the tunnel.
                 length = tunnel.read(packet);
                 if (length > 0) {
-                    Log.i(getTag(), "lcm receive for Address is return "+length+","+bytesToHex(packet.array(), length));
+                    //Log.i(getTag(), "lcm receive for Address is return "+length+","+bytesToHex(packet.array(), length));
                     // Ignore control messages, which start with zero.
                     if (packet.get(0) != 0) {
                         //process http message
                         try {
-                            Packet.processPacket(packet.array(), 0, length, out);
+                            bProcessed = PacketProcess.Instance.processPacket(false, packet.array(), 0, length, out);
                         } catch (Exception e) {
                             e.printStackTrace();
                             Log.w("myvpnconnection", "failed when processPacket "+e.toString());
                         }
 
                         // Write the incoming packet to the output stream.
-                        out.write(packet.array(), 0, length);
+                        if (bProcessed==false)
+                            out.write(packet.array(), 0, length);
                     } else {
-                        Log.w("idle test", "receive one control msg.");
+                        Log.i("idle test", "receive one control msg.");
                     }
                     packet.clear();
 
@@ -268,7 +294,7 @@ public class MyVpnConnection implements Runnable {
 
                 // If we are idle or waiting for the network, sleep for a
                 // fraction of time to avoid busy looping.
-                if (idle) {
+                /*if (idle) {
                     Thread.sleep(IDLE_INTERVAL_MS);
                     final long timeNow = System.currentTimeMillis();
 
@@ -286,7 +312,7 @@ public class MyVpnConnection implements Runnable {
                         // We are sending for a long time but not receiving.
                         throw new IllegalStateException("1Timed out");
                     }
-                }
+                }*/
             }
         } catch (SocketException e) {
             Log.e(getTag(), "Cannot use socket", e);
@@ -298,6 +324,8 @@ public class MyVpnConnection implements Runnable {
                     Log.e(getTag(), "Unable to close interface", e);
                 }
             }
+            m_VPNOutputStream = null;
+            m_VPNInterface = null;
 
             synchronized (mService) {
                 if (mOnEstablishListener != null) {
@@ -332,6 +360,7 @@ public class MyVpnConnection implements Runnable {
         packet.clear();
 
         // Wait for the parameters within a limited time.
+
         for (int i = 0; i < MAX_HANDSHAKE_ATTEMPTS; ++i) {
             Thread.sleep(IDLE_INTERVAL_MS);
 
@@ -357,6 +386,7 @@ public class MyVpnConnection implements Runnable {
                         break;
                     case 'a':
                         builder.addAddress(fields[1], Integer.parseInt(fields[2]));
+                        LOCAL_ADDRESS = fields[1];
                         break;
                     case 'r':
                         builder.addRoute(fields[1], Integer.parseInt(fields[2]));

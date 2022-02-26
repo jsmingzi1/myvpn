@@ -1,4 +1,4 @@
-package flowerwrong.github.com.smart.tunnel.shadowsocks.crypto;
+package com.example.myvpn.vpn.packet.proxy.tunnel.shadowsocks.crypto;
 
 import org.bouncycastle.crypto.StreamBlockCipher;
 import org.bouncycastle.crypto.engines.AESEngine;

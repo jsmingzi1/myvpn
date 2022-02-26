@@ -1,4 +1,4 @@
-package com.example.myvpn;
+package com.example.myvpn.vpn;
 
 /*
  * Copyright (C) 2011 The Android Open Source Project
@@ -20,8 +20,11 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.net.VpnService;
 import android.os.Handler;
 import android.os.Message;
@@ -30,21 +33,32 @@ import android.util.Log;
 import android.util.Pair;
 import android.widget.Toast;
 
+import com.example.myvpn.R;
 import com.example.myvpn.ui.MyVpnClient;
 
+import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Collections;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class MyVpnService extends VpnService implements Handler.Callback {
     private static final String TAG =  MyVpnService.class.getSimpleName();
-
+    public static MyVpnService Instance = null;
     public static final String ACTION_CONNECT = "com.example.android.myvpn.START";
     public static final String ACTION_DISCONNECT = "com.example.android.myvpn.STOP";
+    public static String configFile = "proxy.rule";
+    public static String remoteConfigFile = "https://raw.githubusercontent.com/jsmingzi1/myvpn/main/proxy.rule";
 
     private Handler mHandler;
 
@@ -61,8 +75,10 @@ public class MyVpnService extends VpnService implements Handler.Callback {
 
     private PendingIntent mConfigureIntent;
 
+
     @Override
     public void onCreate() {
+        Instance = this;
         // The handler is only used to show messages.
         if (mHandler == null) {
             mHandler = new Handler(this);
@@ -72,6 +88,7 @@ public class MyVpnService extends VpnService implements Handler.Callback {
         mConfigureIntent = PendingIntent.getActivity(this, 0, new Intent(this, MyVpnClient.class),
                 PendingIntent.FLAG_UPDATE_CURRENT);
 
+        //checkConfigFile(true);
     }
 
     @Override
@@ -198,5 +215,119 @@ public class MyVpnService extends VpnService implements Handler.Callback {
                 .setContentText(getString(message))
                 .setContentIntent(mConfigureIntent)
                 .build());
+    }
+
+    public void writeLog(final String format, Object... args) {
+        final String logString = String.format(format, args);
+        Log.w("MyVPNService", logString);
+        /*m_Handler.post(new Runnable() {
+            @Override
+            public void run() {
+                for (Map.Entry<onStatusChangedListener, Object> entry : m_OnStatusChangedListeners.entrySet()) {
+                    entry.getKey().onLogReceived(logString);
+                }
+            }
+        });*/
+    }
+
+    public String getAppInstallID() {
+        SharedPreferences preferences = getSharedPreferences(MyVpnClient.Prefs.PREF_NAME, MODE_PRIVATE);
+        String appInstallID = preferences.getString("AppInstallID", null);
+        if (appInstallID == null || appInstallID.isEmpty()) {
+            appInstallID = UUID.randomUUID().toString();
+            SharedPreferences.Editor editor = preferences.edit();
+            editor.putString("AppInstallID", appInstallID);
+            editor.apply();
+        }
+        return appInstallID;
+    }
+
+    public String getVersionName() {
+        try {
+            PackageManager packageManager = getPackageManager();
+            // getPackageName()是你当前类的包名，0代表是获取版本信息
+            PackageInfo packInfo = packageManager.getPackageInfo(getPackageName(), 0);
+            return packInfo.versionName;
+        } catch (Exception e) {
+            return "0.0";
+        }
+    }
+
+    public void checkConfigFile(final boolean updateFlag) {
+        Log.w("MyVPNService", "download proxy rule file");
+        Thread.dumpStack();
+        //new Thread(new Runnable() {
+        //    @Override
+        //    public void run() {
+                FileInputStream fis = null;
+                FileOutputStream fos = null;
+                InputStream in = null;
+                try {
+                    fis = openFileInput(configFile);
+
+                    if (updateFlag) {
+                        downloadConfigFile(fos, in);
+                    }
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                    downloadConfigFile(fos, in);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    //sendHandlerMsg("Load config file failed: " + e.getLocalizedMessage());
+                } finally {
+                    if (fis != null) {
+                        try {
+                            fis.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    if (fos != null) {
+                        try {
+                            fos.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    if (in != null) {
+                        try {
+                            in.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            //}
+        //}).start();
+    }
+
+    private void downloadConfigFile(FileOutputStream fos, InputStream in) {
+        try {
+            fos = openFileOutput(configFile, Context.MODE_PRIVATE);
+
+            //OkHttpClient client = new OkHttpClient();
+            //Request request = new Request.Builder()
+            //        .url(remoteConfigFile)
+            //        .build();
+            //Response responses = null;
+            //responses = client.newCall(request).execute();
+            //responses.body().string();
+            //Log.w("downloadConfigFile", "download result is "+responses.body().string());
+            //fos.write(responses.body().string().getBytes());
+
+            URL u = new URL(remoteConfigFile);
+            in = u.openStream();
+            IOUtils.copy(in, fos);
+            //sendHandlerMsg("Download config file from remote success");
+        } catch (FileNotFoundException e1) {
+            e1.printStackTrace();
+        } catch (MalformedURLException e1) {
+            e1.printStackTrace();
+        } catch (IOException e1) {
+            e1.printStackTrace();
+        } catch (Exception e1) {
+            e1.printStackTrace();
+        }
     }
 }

@@ -1,9 +1,12 @@
-package flowerwrong.github.com.smart.net;
+package com.example.myvpn.vpn.packet.proxy.net;
 
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.util.Log;
 
+import com.example.myvpn.vpn.packet.proxy.nogotofail.Closeables;
+import com.example.myvpn.vpn.packet.proxy.nogotofail.HexEncoding;
+import com.example.myvpn.vpn.packet.proxy.tcpip.IPHeader;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
@@ -18,10 +21,6 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-
-import flowerwrong.github.com.smart.nogotofail.Closeables;
-import flowerwrong.github.com.smart.nogotofail.HexEncoding;
-import flowerwrong.github.com.smart.tcpip.IPHeader;
 
 public class TcpUdpClientInfo {
     private static final String TAG = TcpUdpClientInfo.class.getSimpleName();

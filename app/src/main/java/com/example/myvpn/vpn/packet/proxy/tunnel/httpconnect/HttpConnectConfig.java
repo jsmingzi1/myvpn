@@ -1,8 +1,8 @@
-package flowerwrong.github.com.smart.tunnel.httpconnect;
+package com.example.myvpn.vpn.packet.proxy.tunnel.httpconnect;
 
 import android.net.Uri;
 
-import flowerwrong.github.com.smart.tunnel.Config;
+import com.example.myvpn.vpn.packet.proxy.tunnel.Config;
 
 import java.net.InetSocketAddress;
 

@@ -1,4 +1,4 @@
-package flowerwrong.github.com.smart.util;
+package com.example.myvpn.vpn.packet.proxy.util;
 
 import org.bouncycastle.crypto.digests.SHA1Digest;
 import org.bouncycastle.crypto.generators.HKDFBytesGenerator;

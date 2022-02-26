@@ -1,4 +1,4 @@
-package com.example.myvpn;
+package com.example.myvpn.ui;
 
 import android.content.Context;
 import android.content.Intent;
@@ -15,6 +15,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.example.myvpn.R;
 
 import java.util.ArrayList;
 import java.util.List;

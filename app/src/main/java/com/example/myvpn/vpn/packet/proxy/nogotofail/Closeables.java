@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package flowerwrong.github.com.smart.nogotofail;
+package com.example.myvpn.vpn.packet.proxy.nogotofail;
 
 import java.io.Closeable;
 import java.io.IOException;

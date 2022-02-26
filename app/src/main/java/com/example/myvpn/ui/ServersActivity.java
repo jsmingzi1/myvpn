@@ -1,4 +1,4 @@
-package com.example.myvpn;
+package com.example.myvpn.ui;
 
 import android.content.Intent;
 import android.os.AsyncTask;
@@ -12,6 +12,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.example.myvpn.R;
 
 import org.json.JSONArray;
 import org.json.JSONObject;

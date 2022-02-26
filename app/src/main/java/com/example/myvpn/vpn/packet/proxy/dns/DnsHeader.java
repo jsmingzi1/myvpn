@@ -1,8 +1,8 @@
-package flowerwrong.github.com.smart.dns;
+package com.example.myvpn.vpn.packet.proxy.dns;
+
+import com.example.myvpn.vpn.packet.proxy.tcpip.CommonMethods;
 
 import java.nio.ByteBuffer;
-
-import flowerwrong.github.com.smart.tcpip.CommonMethods;
 
 
 public class DnsHeader {

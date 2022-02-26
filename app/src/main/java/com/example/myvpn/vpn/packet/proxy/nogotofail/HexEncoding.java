@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package flowerwrong.github.com.smart.nogotofail;
+package com.example.myvpn.vpn.packet.proxy.nogotofail;
 
 /**
  * Hexadecimal encoding where each byte is represented by two hexadecimal digits.

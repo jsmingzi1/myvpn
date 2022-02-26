@@ -1,16 +1,15 @@
-package flowerwrong.github.com.smart.core;
+package com.example.myvpn.vpn.packet.proxy.core;
 
-import java.io.IOException;
+import com.example.myvpn.vpn.packet.proxy.tcpip.CommonMethods;
+import com.example.myvpn.vpn.packet.proxy.tcpip.IPHeader;
+import com.example.myvpn.vpn.packet.proxy.tcpip.UDPHeader;
+
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
-
-import flowerwrong.github.com.smart.tcpip.CommonMethods;
-import flowerwrong.github.com.smart.tcpip.IPHeader;
-import flowerwrong.github.com.smart.tcpip.UDPHeader;
 
 public class UdpProxy implements Runnable {
     private class State {
@@ -83,14 +82,14 @@ public class UdpProxy implements Runnable {
                 udpHeader.setDestinationPort(state.ClientPort);
                 udpHeader.setTotalLength(8 + udpDataBuffer.remaining());
 
-                LocalVpnService.Instance.sendUDPPacket(ipHeader, udpHeader);
+                //LocalVpnService.Instance.sendUDPPacket(ipHeader, udpHeader);
                 break;
             }
         } catch (Exception e) {
-            LocalVpnService.Instance.writeLog(e.getLocalizedMessage());
+
             e.printStackTrace();
         } finally {
-            LocalVpnService.Instance.writeLog("UDP Proxy Thread %s Exited.", m_ReceivedThread.getName());
+
             this.stop();
         }
     }
@@ -107,7 +106,7 @@ public class UdpProxy implements Runnable {
         DatagramPacket packet = new DatagramPacket(udpHeader.m_Data, udpHeader.m_Offset + 8, buffer.remaining());
         packet.setSocketAddress(remoteAddress);
 
-        try {
+        /*try {
             /**
              * Protect a socket from VPN connections. After protecting, data sent
              * through this socket will go directly to the underlying network,
@@ -122,14 +121,13 @@ public class UdpProxy implements Runnable {
              *
              * @return {@code true} on success.
              */
-            if (LocalVpnService.Instance.protect(m_Client)) {
+             /*if (LocalVpnService.Instance.protect(m_Client)) {
                 m_Client.send(packet);
             } else {
-                LocalVpnService.Instance.writeLog("VPN protect udp socket failed.");
+
             }
         } catch (IOException e) {
-            LocalVpnService.Instance.writeLog(e.getLocalizedMessage());
             e.printStackTrace();
-        }
+        }*/
     }
 }

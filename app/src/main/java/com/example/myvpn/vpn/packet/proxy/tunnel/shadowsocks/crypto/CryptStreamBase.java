@@ -1,4 +1,7 @@
-package flowerwrong.github.com.smart.tunnel.shadowsocks.crypto;
+package com.example.myvpn.vpn.packet.proxy.tunnel.shadowsocks.crypto;
+
+import com.example.myvpn.vpn.packet.proxy.tunnel.shadowsocks.ShadowSocksKey;
+import com.example.myvpn.vpn.packet.proxy.util.CryptUtil;
 
 import org.bouncycastle.crypto.CipherParameters;
 import org.bouncycastle.crypto.StreamCipher;
@@ -14,9 +17,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 
 import javax.crypto.SecretKey;
-
-import flowerwrong.github.com.smart.tunnel.shadowsocks.ShadowSocksKey;
-import flowerwrong.github.com.smart.util.CryptUtil;
 
 /**
  * https://github.com/blinksocks/blinksocks/blob/master/src/presets/ss-stream-cipher.js

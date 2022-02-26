@@ -1,4 +1,4 @@
-package flowerwrong.github.com.smart.util;
+package com.example.myvpn.vpn.packet.proxy.util;
 
 import org.apache.commons.net.util.SubnetUtils;
 

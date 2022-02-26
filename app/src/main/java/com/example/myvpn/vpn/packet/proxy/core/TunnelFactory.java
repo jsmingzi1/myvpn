@@ -1,12 +1,12 @@
-package flowerwrong.github.com.smart.core;
+package com.example.myvpn.vpn.packet.proxy.core;
 
-import flowerwrong.github.com.smart.tunnel.Config;
-import flowerwrong.github.com.smart.tunnel.RawTunnel;
-import flowerwrong.github.com.smart.tunnel.Tunnel;
-import flowerwrong.github.com.smart.tunnel.httpconnect.HttpConnectConfig;
-import flowerwrong.github.com.smart.tunnel.httpconnect.HttpConnectTunnel;
-import flowerwrong.github.com.smart.tunnel.shadowsocks.ShadowsocksConfig;
-import flowerwrong.github.com.smart.tunnel.shadowsocks.ShadowsocksTunnel;
+import com.example.myvpn.vpn.packet.proxy.tunnel.Config;
+import com.example.myvpn.vpn.packet.proxy.tunnel.RawTunnel;
+import com.example.myvpn.vpn.packet.proxy.tunnel.Tunnel;
+import com.example.myvpn.vpn.packet.proxy.tunnel.httpconnect.HttpConnectConfig;
+import com.example.myvpn.vpn.packet.proxy.tunnel.httpconnect.HttpConnectTunnel;
+import com.example.myvpn.vpn.packet.proxy.tunnel.shadowsocks.ShadowsocksConfig;
+import com.example.myvpn.vpn.packet.proxy.tunnel.shadowsocks.ShadowsocksTunnel;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.Selector;
@@ -20,8 +20,10 @@ public class TunnelFactory {
 
     public static Tunnel createTunnelByConfig(InetSocketAddress destAddress, Selector selector) throws Exception {
         if (destAddress.isUnresolved()) {
+            //Log.w("createTunnelByConfig", "destAddress.isUnresolved() "+destAddress.getHostName());
             Config config = ProxyConfig.Instance.getDefaultTunnelConfig(destAddress);
             if (config instanceof HttpConnectConfig) {
+                //Log.w("createTunnelByConfig", "HttpConnectConfig tunnel is created");
                 return new HttpConnectTunnel((HttpConnectConfig) config, selector);
             } else if (config instanceof ShadowsocksConfig) {
                 return new ShadowsocksTunnel((ShadowsocksConfig) config, selector);
@@ -30,6 +32,7 @@ public class TunnelFactory {
         } else {
             return new RawTunnel(destAddress, selector);
         }
+
     }
 
 }

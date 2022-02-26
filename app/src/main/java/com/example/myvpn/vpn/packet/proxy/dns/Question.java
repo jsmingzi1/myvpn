@@ -1,4 +1,4 @@
-package flowerwrong.github.com.smart.dns;
+package com.example.myvpn.vpn.packet.proxy.dns;
 
 import java.nio.ByteBuffer;
 

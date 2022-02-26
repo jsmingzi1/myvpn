@@ -1,4 +1,4 @@
-package flowerwrong.github.com.smart.tcpip;
+package com.example.myvpn.vpn.packet.proxy.tcpip;
 
 import com.google.common.base.Splitter;
 

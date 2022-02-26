@@ -1,6 +1,18 @@
-package flowerwrong.github.com.smart.core;
+package com.example.myvpn.vpn.packet.proxy.core;
 
+import android.util.Log;
 import android.util.SparseArray;
+
+import com.example.myvpn.Tools;
+import com.example.myvpn.vpn.MyVpnService;
+import com.example.myvpn.vpn.packet.PacketProcess;
+import com.example.myvpn.vpn.packet.proxy.dns.DnsPacket;
+import com.example.myvpn.vpn.packet.proxy.dns.Question;
+import com.example.myvpn.vpn.packet.proxy.dns.Resource;
+import com.example.myvpn.vpn.packet.proxy.dns.ResourcePointer;
+import com.example.myvpn.vpn.packet.proxy.tcpip.CommonMethods;
+import com.example.myvpn.vpn.packet.proxy.tcpip.IPHeader;
+import com.example.myvpn.vpn.packet.proxy.tcpip.UDPHeader;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -8,14 +20,6 @@ import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentHashMap;
-
-import flowerwrong.github.com.smart.dns.DnsPacket;
-import flowerwrong.github.com.smart.dns.Question;
-import flowerwrong.github.com.smart.dns.Resource;
-import flowerwrong.github.com.smart.dns.ResourcePointer;
-import flowerwrong.github.com.smart.tcpip.CommonMethods;
-import flowerwrong.github.com.smart.tcpip.IPHeader;
-import flowerwrong.github.com.smart.tcpip.UDPHeader;
 
 
 public class DnsProxy implements Runnable {
@@ -46,6 +50,9 @@ public class DnsProxy implements Runnable {
 
     public static String reverseLookup(int ip) {
         return IPDomainMaps.get(ip);
+    }
+    public static String reverseLookupNoneProxy(int ip) {
+        return NoneProxyIPDomainMaps.get(ip);
     }
 
     public void start() {
@@ -79,7 +86,11 @@ public class DnsProxy implements Runnable {
             while (m_Client != null && !m_Client.isClosed()) {
                 packet.setLength(RECEIVE_BUFFER.length - 28);
                 m_Client.receive(packet);
+                //Log.w("DNS0 receive", "raw data is "+ gzipcls.bytesToHexFun1(packet.getData()));
 
+                //byte []btmp = new byte[packet.getLength()];
+                //System.arraycopy(packet.getAddress(), 0, btmp, 0, packet.getLength());
+                //Log.w("DNSProxy", "received one DNS response " + gzipcls.bytesToHexFun1(btmp));
                 dnsBuffer.clear();
                 dnsBuffer.limit(packet.getLength());
                 try {
@@ -89,14 +100,14 @@ public class DnsProxy implements Runnable {
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
-                    LocalVpnService.Instance.writeLog("Parse DNS error: %s", e);
+                    MyVpnService.Instance.writeLog("Parse DNS error: %s", e);
                 }
             }
         } catch (Exception e) {
-            LocalVpnService.Instance.writeLog(e.getLocalizedMessage());
+            MyVpnService.Instance.writeLog(e.getLocalizedMessage());
             e.printStackTrace();
         } finally {
-            LocalVpnService.Instance.writeLog("DnsResolver Thread Exited.");
+            MyVpnService.Instance.writeLog("DnsResolver Thread Exited.");
             this.stop();
         }
     }
@@ -151,7 +162,7 @@ public class DnsProxy implements Runnable {
                 int realIP = getFirstIP(dnsPacket);
 
                 // 此时needProxy域名和对应的ip解析都存在
-                String action = ProxyConfig.Instance.needProxy(question.Domain, realIP, IPHeader.UDP, 0);
+                /*String action = ProxyConfig.Instance.needProxy(question.Domain, realIP, IPHeader.UDP, 0);
                 if (action.equals("proxy") || action.equals("block")) {
                     int fakeIP = 0; // block
                     if (action.equals("proxy"))
@@ -159,9 +170,9 @@ public class DnsProxy implements Runnable {
 
                     tamperDnsResponse(rawPacket, dnsPacket, fakeIP);
                     return true;
-                } else {
+                } else {*/
                     NoneProxyIPDomainMaps.put(realIP, question.Domain);
-                }
+                //}
             }
         }
         return false;
@@ -177,6 +188,24 @@ public class DnsProxy implements Runnable {
         }
 
         if (state != null) {
+            int realIP = getFirstIP(dnsPacket);
+            //Log.w("DNS0", "raw data is ");
+            /*{
+                for (int i=0; i< dnsPacket.Header.QuestionCount; i++) {
+                    Log.w("DNS0", "Question "+i+" is " + dnsPacket.Questions[i].Domain + ", "
+                            +dnsPacket.Questions[i].Class + ", "
+                            +dnsPacket.Questions[i].Type);
+                }
+                for (int i = 0; i < dnsPacket.Header.ResourceCount; i++) {
+                    Log.w("DNS0", "Resource "+i+" is " + dnsPacket.Resources[i].Domain + ", "
+                            +dnsPacket.Resources[i].Class + ", "
+                            +dnsPacket.Resources[i].Type + ", "
+                            +Tools.ipInt2Str(CommonMethods.readInt(dnsPacket.Resources[i].Data, 0)));
+                }
+            }*/
+            //for (int i=0; i<dnsPacket.Questions.length; i++) {
+            //    Log.w("DNS0", "real ip is " + Tools.ipInt2Str(realIP) + "," + dnsPacket.Questions[i].Domain);
+            //}
             // DNS污染，默认污染海外网站
             dnsPollution(udpHeader.m_Data, dnsPacket);
 
@@ -188,8 +217,10 @@ public class DnsProxy implements Runnable {
             udpHeader.setSourcePort(state.RemotePort);
             udpHeader.setDestinationPort(state.ClientPort);
             udpHeader.setTotalLength(8 + dnsPacket.Size);
-
-            LocalVpnService.Instance.sendUDPPacket(ipHeader, udpHeader);
+            //dnsPacket
+            realIP = getFirstIP(dnsPacket);
+            Log.w("DNS", "real ip is " + Tools.ipInt2Str(realIP) + "," + dnsPacket.Questions[0].Domain);
+            PacketProcess.Instance.sendUDPPacket(ipHeader, udpHeader);
         }
     }
 
@@ -208,9 +239,12 @@ public class DnsProxy implements Runnable {
         // Requests the A record for the domain name
         if (question.Type == 1) {
             // 此时needProxy只有域名存在，如果cache里面有，那么都存在
-            String action = ProxyConfig.Instance.needProxy(question.Domain, getIPFromCache(question.Domain), IPHeader.UDP, 0);
+            //String action = ProxyConfig.Instance.needProxy(question.Domain, getIPFromCache(question.Domain), IPHeader.UDP, 0, null);
 
-            if (action.equals("proxy") || action.equals("block")) {
+            // don't disable dns
+            if (true)
+                return false;
+            /*if (action.equals("proxy") || action.equals("block")) {
                 int fakeIP = 0; // block
                 if (action.equals("proxy"))
                     fakeIP = getOrCreateFakeIP(question.Domain);
@@ -225,11 +259,11 @@ public class DnsProxy implements Runnable {
                 udpHeader.setSourcePort(udpHeader.getDestinationPort());
                 udpHeader.setDestinationPort(sourcePort);
                 udpHeader.setTotalLength(8 + dnsPacket.Size);
-
+                //Log.w("DNS-1", "this is interceptDns");
                 // write to tun
-                LocalVpnService.Instance.sendUDPPacket(ipHeader, udpHeader);
+                PacketProcess.Instance.sendUDPPacket(ipHeader, udpHeader);
                 return true;
-            }
+            }*/
         }
         return false;
     }
@@ -283,13 +317,18 @@ public class DnsProxy implements Runnable {
                  *
                  * @return {@code true} on success.
                  */
-                if (LocalVpnService.Instance.protect(m_Client)) {
+                if (MyVpnService.Instance.protect(m_Client)) {
                     m_Client.send(packet);
+                    //Log.w("DNS1 send", "raw data is "+ gzipcls.bytesToHexFun1(packet.getData()));
+                    //byte[] bt = new byte[dnsPacket.Size+8];
+                    //System.arraycopy(udpHeader.m_Data, udpHeader.m_Offset, bt, 0, dnsPacket.Size+8);
+                    //Log.w("DNS2 send", "raw data is "+ gzipcls.bytesToHexFun1(ipHeader.m_Data));
+
                 } else {
-                    LocalVpnService.Instance.writeLog("VPN protect udp socket failed.");
+                    MyVpnService.Instance.writeLog("VPN protect udp socket failed.");
                 }
             } catch (IOException e) {
-                LocalVpnService.Instance.writeLog("on DNS req send failed ", e.getLocalizedMessage());
+                MyVpnService.Instance.writeLog("on DNS req send failed ", e.getLocalizedMessage());
                 e.printStackTrace();
             }
         }

@@ -1,9 +1,10 @@
-package flowerwrong.github.com.smart.tunnel;
+package com.example.myvpn.vpn.packet.proxy.tunnel;
 
 import android.annotation.SuppressLint;
+import android.util.Log;
 
-import flowerwrong.github.com.smart.core.LocalVpnService;
-import flowerwrong.github.com.smart.core.ProxyConfig;
+import com.example.myvpn.vpn.MyVpnService;
+import com.example.myvpn.vpn.packet.proxy.tunnel.httpconnect.HttpConnectTunnel;
 
 import java.io.IOException;
 import java.net.ConnectException;
@@ -30,18 +31,21 @@ public abstract class Tunnel {
 
     protected abstract void onDispose();
 
-    private SocketChannel m_InnerChannel;
+    protected SocketChannel m_InnerChannel;
     private ByteBuffer m_SendRemainBuffer;
-    private Selector m_Selector;
+    protected Selector m_Selector;
     private Tunnel m_BrotherTunnel;
     private boolean m_Disposed;
-    private InetSocketAddress m_ServerEP;
+    protected InetSocketAddress m_ServerEP;
     protected InetSocketAddress m_DestAddress;
+    public String TunnelType = "local"; //default is local, another is remote
+    public long currentID  = 0;
+
 
     public Tunnel(SocketChannel innerChannel, Selector selector) {
         this.m_InnerChannel = innerChannel;
         this.m_Selector = selector;
-        SessionCount++;
+        currentID = SessionCount++;
     }
 
     public Tunnel(InetSocketAddress serverAddress, Selector selector) throws IOException {
@@ -50,7 +54,8 @@ public abstract class Tunnel {
         this.m_InnerChannel = innerChannel;
         this.m_Selector = selector;
         this.m_ServerEP = serverAddress;
-        SessionCount++;
+        currentID = SessionCount++;
+
     }
 
     public void setBrotherTunnel(Tunnel brotherTunnel) {
@@ -58,12 +63,14 @@ public abstract class Tunnel {
     }
 
     public void connect(InetSocketAddress destAddress) throws Exception {
-        if (LocalVpnService.Instance.protect(m_InnerChannel.socket())) { // 保护socket不走vpn
+        Log.w(TunnelType + " connect"+currentID, "connect is called "+destAddress.isUnresolved()+","+destAddress.getHostName());
+
+        if (MyVpnService.Instance.protect(m_InnerChannel.socket())) { // 保护socket不走vpn
             m_DestAddress = destAddress;
             m_InnerChannel.register(m_Selector, SelectionKey.OP_CONNECT, this); // 注册连接事件
             m_InnerChannel.connect(m_ServerEP); // 连接目标
         } else {
-            LocalVpnService.Instance.writeLog("VPN protect socket failed.");
+
             throw new Exception("VPN protect socket failed.");
         }
     }
@@ -77,6 +84,8 @@ public abstract class Tunnel {
 
 
     protected boolean write(ByteBuffer buffer, boolean copyRemainData) throws Exception {
+        Log.w(TunnelType + " connect"+currentID, "write is called "+(m_DestAddress==null?"null":m_DestAddress.getHostName()));
+
         int bytesSent;
         while (buffer.hasRemaining()) {
             bytesSent = m_InnerChannel.write(buffer);
@@ -107,13 +116,16 @@ public abstract class Tunnel {
         m_BrotherTunnel.beginReceive(); // 兄弟也开始收数据
     }
 
+    //this is used for remotetunnel
     @SuppressLint("DefaultLocale")
     public void onConnectable() {
+        Log.w(TunnelType + " onConnectable"+currentID, "onConnectable is called");
+
         try {
             if (m_InnerChannel.finishConnect()) { // 连接成功
                 onConnected(GL_BUFFER); // 通知子类TCP已连接，子类可以根据协议实现握手等
             } else { // 连接失败
-                LocalVpnService.Instance.writeLog("Error: connect to %s failed.", m_ServerEP);
+
                 this.dispose();
             }
         } catch (ConnectException e) {
@@ -122,16 +134,24 @@ public abstract class Tunnel {
         } catch (SocketException e) {
             this.dispose();
         } catch (Exception e) {
-            LocalVpnService.Instance.writeLog("Error: connect to %s failed: %s", m_ServerEP, e);
+
             this.dispose();
         }
     }
 
     public void onReadable(SelectionKey key) {
+        if (this instanceof RawTunnel) {
+            Log.w(TunnelType + " tunnel onReadable"+currentID, "this is rawtunnel");
+        }
+        else if (this instanceof HttpConnectTunnel) {
+            Log.w(TunnelType + " tunnel onReadable"+currentID, "this is httptunnel");
+        }
         try {
             ByteBuffer buffer = GL_BUFFER;
             buffer.clear();
             int bytesRead = m_InnerChannel.read(buffer);
+            //if (this instanceof HttpConnectTunnel)
+            //    Log.w(TunnelType + " onReadable"+currentID, "httptunnel onReadable content is "+new String(buffer.array(), 0, bytesRead));
             if (bytesRead > 0) {
                 buffer.flip();
                 afterReceived(buffer); // 先让子类处理，例如解密数据
@@ -139,8 +159,8 @@ public abstract class Tunnel {
                     m_BrotherTunnel.beforeSend(buffer); // 发送之前，先让子类处理，例如做加密等
                     if (!m_BrotherTunnel.write(buffer, true)) {
                         key.cancel(); // 兄弟吃不消，就取消读取事件
-                        if (ProxyConfig.IS_DEBUG)
-                            LocalVpnService.Instance.writeLog("%s can not write more", m_ServerEP);
+
+
                     }
                 }
             } else if (bytesRead < 0) {
@@ -157,6 +177,12 @@ public abstract class Tunnel {
     }
 
     public void onWritable(SelectionKey key) {
+        if (this instanceof RawTunnel) {
+            Log.w(TunnelType + " tunnel onWritable"+currentID, "this is rawtunnel");
+        }
+        else if (this instanceof HttpConnectTunnel) {
+            Log.w(TunnelType + " tunnel onWritable"+currentID, "this is httptunnel");
+        }
         try {
             this.beforeSend(m_SendRemainBuffer); // 发送之前，先让子类处理，例如做加密等
             if (this.write(m_SendRemainBuffer, false)) { // 如果剩余数据已经发送完毕

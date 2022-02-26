@@ -1,6 +1,9 @@
-package flowerwrong.github.com.smart.core;
+package com.example.myvpn.vpn.packet.proxy.core;
 
-import flowerwrong.github.com.smart.tcpip.CommonMethods;
+import android.util.Log;
+
+import com.example.myvpn.vpn.MyVpnService;
+import com.example.myvpn.vpn.packet.proxy.tcpip.CommonMethods;
 
 import java.util.Locale;
 
@@ -23,7 +26,7 @@ public class HttpHostHeaderParser {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            LocalVpnService.Instance.writeLog("Error: parseHost: %s", e);
+            MyVpnService.Instance.writeLog("Error: parseHost: %s", e);
         }
         return null;
     }
@@ -39,7 +42,8 @@ public class HttpHostHeaderParser {
                     String name = nameValueStrings[0].toLowerCase(Locale.ENGLISH).trim();
                     String value = nameValueStrings[1].trim();
                     if ("host".equals(name)) {
-                        return value;
+                        Log.w("http header", "from http request, get host info " + value + "_" + requestLine);
+                        return value+"_"+requestLine;
                     }
                 }
             }
@@ -93,6 +97,7 @@ public class HttpHostHeaderParser {
                     offset += 5;//skip SNI header.
                     length -= 5;//SNI size;
                     if (offset + length > limit) return null;
+                    Log.w("http header", "from https request, get host info " + new String(buffer, offset, length));
                     return new String(buffer, offset, length);
                 } else {
                     offset += length;

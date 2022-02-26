@@ -1,4 +1,8 @@
-package flowerwrong.github.com.smart.tunnel.shadowsocks.crypto;
+package com.example.myvpn.vpn.packet.proxy.tunnel.shadowsocks.crypto;
+
+import com.example.myvpn.vpn.packet.proxy.tcpip.IPHeader;
+import com.example.myvpn.vpn.packet.proxy.tunnel.shadowsocks.ShadowSocksKey;
+import com.example.myvpn.vpn.packet.proxy.util.CryptUtil;
 
 import org.bouncycastle.crypto.CipherParameters;
 import org.bouncycastle.crypto.modes.AEADBlockCipher;
@@ -10,10 +14,6 @@ import java.security.InvalidAlgorithmParameterException;
 import java.util.Arrays;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-
-import flowerwrong.github.com.smart.tcpip.IPHeader;
-import flowerwrong.github.com.smart.tunnel.shadowsocks.ShadowSocksKey;
-import flowerwrong.github.com.smart.util.CryptUtil;
 
 /**
  * https://github.com/shadowsocks/shadowsocks-libev/blob/master/src/aead.c
