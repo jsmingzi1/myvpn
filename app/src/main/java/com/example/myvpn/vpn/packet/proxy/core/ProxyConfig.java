@@ -218,22 +218,24 @@ public class ProxyConfig {
 
         return null;
     }
-    private boolean judgeAction(String input, String Operation, ArrayList<String> values) {
+
+    //bReverse: true, no need change; false, need reverse
+    private boolean judgeAction(String input, String Operation, ArrayList<String> values, boolean bReverse) {
         //if (true) return true;
         for (int i=0;i<values.size(); i++) {
             Log.w("ProxyConfig", "judgeAction "+input + ", "+Operation+", "+values.get(i));
             if (Operation.equalsIgnoreCase("equals") && input.equals(values.get(i)))
-                return true;
+                return bReverse?true:false;
             else if (Operation.equalsIgnoreCase("prefix") && input.startsWith(values.get(i)))
-                return true;
+                return bReverse?true:false;
             else if (Operation.equalsIgnoreCase("suffix") && input.endsWith(values.get(i)))
-                return true;
+                return bReverse?true:false;
             else if (Operation.equalsIgnoreCase("contains") && input.contains(values.get(i)))
-                return true;
+                return bReverse?true:false;
             else if (Operation.equalsIgnoreCase("exists") && input.length() > 0)
-                return true;
+                return bReverse?true:false;
         }
-        return false;
+        return bReverse?false:true;
     }
     public String getAction(NatSession session) {
         Log.w("ProxyConfig", "getAction now!!!");
@@ -252,16 +254,16 @@ public class ProxyConfig {
                 ProxyRuleItem item = rule.oneRule.get(itemIdx);
                 //check item
                 if (item.Key.equalsIgnoreCase("host")) {
-                    if (false == judgeAction(session.RemoteHost, item.Operation, item.values))
+                    if (false == judgeAction(session.RemoteHost, item.Operation, item.values, item.BoolValue))
                         break; //one item failed, quit this rule
                 } else if (item.Key.equalsIgnoreCase("ip")) {
-                    if (false == judgeAction(Tools.ipInt2Str(session.RemoteIP), item.Operation, item.values))
+                    if (false == judgeAction(Tools.ipInt2Str(session.RemoteIP), item.Operation, item.values, item.BoolValue))
                         break; //one item failed, quit this rule
                 } else if (item.Key.equalsIgnoreCase("protocol")) {
-                    if (false == judgeAction(Tools.convertProtocolInt2Str(session.protocolType), item.Operation, item.values))
+                    if (false == judgeAction(Tools.convertProtocolInt2Str(session.protocolType), item.Operation, item.values, item.BoolValue))
                         break; //one item failed, quit this rule
                 } else if (item.Key.equalsIgnoreCase("httpaction")) {
-                    if (false == judgeAction(session.httpAction, item.Operation, item.values))
+                    if (false == judgeAction(session.httpAction, item.Operation, item.values, item.BoolValue))
                         break; //one item failed, quit this rule
                 } else {
                     break;//not match, quit this rule;
