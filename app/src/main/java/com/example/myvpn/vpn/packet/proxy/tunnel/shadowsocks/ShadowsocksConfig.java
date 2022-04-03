@@ -12,7 +12,7 @@ public class ShadowsocksConfig extends Config {
     public String EncryptMethod;
     public String Password;
 
-    public static ShadowsocksConfig parse(String proxyInfo) throws Exception {
+    public static ShadowsocksConfig parse(String configname, String proxyInfo) throws Exception {
         ShadowsocksConfig config = new ShadowsocksConfig();
         Uri uri = Uri.parse(proxyInfo);
         if (uri.getPort() == -1) {
@@ -33,6 +33,7 @@ public class ShadowsocksConfig extends Config {
             throw new Exception(String.format("Method: %s does not support", config.EncryptMethod));
         }
         config.ServerAddress = new InetSocketAddress(uri.getHost(), uri.getPort());
+        config.ConfigName = configname;
         return config;
     }
 

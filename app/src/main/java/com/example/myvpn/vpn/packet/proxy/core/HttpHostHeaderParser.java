@@ -32,6 +32,7 @@ public class HttpHostHeaderParser {
     }
 
     static String getHttpHost(byte[] buffer, int offset, int count) {
+        Log.w("HttpHostHeaderParser", "gethttphost");
         String headerString = new String(buffer, offset, count);
         String[] headerLines = headerString.split("\\r\\n");
         String requestLine = headerLines[0];
@@ -52,6 +53,8 @@ public class HttpHostHeaderParser {
     }
 
     static String getSNI(byte[] buffer, int offset, int count) {
+        Log.w("HttpHostHeaderParser", "getsni");
+
         int limit = offset + count;
         if (count > 43 && buffer[offset] == 0x16) {//TLS Client Hello
             offset += 43;//skip 43 bytes header

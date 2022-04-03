@@ -2,6 +2,7 @@ package com.example.myvpn.vpn.packet.proxy.tunnel.httpconnect;
 
 import android.util.Log;
 
+import com.example.myvpn.Tools;
 import com.example.myvpn.vpn.MyVpnService;
 import com.example.myvpn.vpn.packet.proxy.core.ProxyConfig;
 import com.example.myvpn.vpn.packet.proxy.tunnel.Tunnel;
@@ -33,7 +34,7 @@ public class HttpConnectTunnel extends Tunnel {
             Log.w("HttpConnectTunnel", "init the default proxy "+prxoyServer.getAddress().getHostAddress());
             //prxoyServer = new InetSocketAddress("121.4.240.117", 443);
         }
-        //currentID++;
+        currentID++;
     }
 
 
@@ -47,6 +48,9 @@ public class HttpConnectTunnel extends Tunnel {
             m_DestAddress = destAddress;
             m_InnerChannel.register(m_Selector, SelectionKey.OP_CONNECT, this); // 注册连接事件
             m_InnerChannel.connect(prxoyServer); // 连接目标
+            Log.w("httptunnel", "connect proxyserver "+prxoyServer.getAddress().getHostAddress()+":"
+            +prxoyServer.getPort()+","
+            +prxoyServer.getHostName());
         } else {
 
             throw new Exception("VPN protect socket failed.");
@@ -56,9 +60,17 @@ public class HttpConnectTunnel extends Tunnel {
 
     @Override
     protected void onConnected(ByteBuffer buffer) throws Exception {
+        String function_header=TunnelType+" HttpConnectTunnel "+Tools.ipInt2Str(session.LocalIP)+":"+session.LocalPort
+                +"->"+Tools.ipInt2Str(session.RemoteIP)+":"+session.RemotePort;
+        if (session.RemoteHost.equals(Tools.ipInt2Str(session.RemoteIP))) {
+            //means, http first establish connection, then will send http message
+            Log.w(function_header, "remote host == remote ip, not decode host yet, no need send message to proxy");
+            return;
+        }
+
         if (httpAction != null) {
             // for http, just use normal proxy
-            Log.w(TunnelType+" httptunnel onConnected"+currentID, "this is baidu.com/mtool.chinaz.com, skip it");
+            Log.w(function_header, "this is baidu.com/mtool.chinaz.com, skip it");
             m_TunnelEstablished = true;
             onTunnelEstablished();
             return;
@@ -70,7 +82,7 @@ public class HttpConnectTunnel extends Tunnel {
                     m_DestAddress.getPort(),
                     ProxyConfig.Instance.getUserAgent(),
                     ProxyConfig.AppInstallID);
-        Log.w("HttpTunnel onConnected" + currentID, "onConnected " + request);
+        Log.w("HttpTunnel-onConnected " + currentID, "onConnected " + request);
 
         buffer.clear();
         buffer.put(request.getBytes());
@@ -112,7 +124,7 @@ public class HttpConnectTunnel extends Tunnel {
     protected void beforeSend(ByteBuffer buffer) throws Exception {
         Log.w(TunnelType+" HttpTunnel beforeSend"+currentID, "beforeSend");
         //for https proxy, nothing need do it, but for http proxy, need change request header
-        if (httpAction != null) {
+        if (httpAction != null) {//http msg, not https
             trySendPartOfHeader(buffer); // 尝试发送请求头的一部分，让请求头的host在第二个包里面发送，从而绕过机房的白名单机制。
         }
     }
@@ -133,6 +145,8 @@ public class HttpConnectTunnel extends Tunnel {
                 Log.w(TunnelType+" HttpTunnel afterReceived"+currentID, "http proxy response is "+response + ", request host is " + m_DestAddress.getHostName());
                 buffer.limit(buffer.position());
             } else {
+                Log.w(TunnelType+" HttpTunnelERROR"+currentID, "http proxy response is "+response + ", request host is " + m_DestAddress.getHostName());
+
                 throw new Exception(String.format("Proxy server response an error: %s", response));
             }
 

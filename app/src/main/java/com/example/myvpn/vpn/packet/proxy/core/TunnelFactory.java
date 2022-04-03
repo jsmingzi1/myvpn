@@ -1,5 +1,7 @@
 package com.example.myvpn.vpn.packet.proxy.core;
 
+import android.util.Log;
+
 import com.example.myvpn.vpn.packet.proxy.tunnel.Config;
 import com.example.myvpn.vpn.packet.proxy.tunnel.RawTunnel;
 import com.example.myvpn.vpn.packet.proxy.tunnel.Tunnel;
@@ -20,7 +22,7 @@ public class TunnelFactory {
 
     public static Tunnel createTunnelByConfig(InetSocketAddress destAddress, Selector selector) throws Exception {
         if (destAddress.isUnresolved()) {
-            //Log.w("createTunnelByConfig", "destAddress.isUnresolved() "+destAddress.getHostName());
+            Log.w("createTunnelByConfig", "destAddress.isUnresolved() "+destAddress.getHostName());
             Config config = ProxyConfig.Instance.getDefaultTunnelConfig(destAddress);
             if (config instanceof HttpConnectConfig) {
                 //Log.w("createTunnelByConfig", "HttpConnectConfig tunnel is created");

@@ -14,6 +14,7 @@ public class NatSession {
     public int PacketSent;
     public long LastNanoTime;
     public int uid;
-    public byte[] firstData; //for tcp message, store the first ACK msg
     public String httpAction;
+    public int protocolType=0; //0 HTTP, 1 HTTPS, 2 TCP, 3 UDP
+    public boolean isConnected=false;
 }

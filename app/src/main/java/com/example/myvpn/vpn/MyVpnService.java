@@ -58,7 +58,8 @@ public class MyVpnService extends VpnService implements Handler.Callback {
     public static final String ACTION_CONNECT = "com.example.android.myvpn.START";
     public static final String ACTION_DISCONNECT = "com.example.android.myvpn.STOP";
     public static String configFile = "proxy.rule";
-    public static String remoteConfigFile = "https://raw.githubusercontent.com/jsmingzi1/myvpn/main/proxy.rule";
+    //public static String remoteConfigFile = "https://raw.githubusercontent.com/jsmingzi1/myvpn/main/proxy.rule";
+    public static String remoteConfigFile = "https://gitee.com/jsmingzi/demo/raw/master/proxy.rule";
 
     private Handler mHandler;
 
@@ -255,7 +256,7 @@ public class MyVpnService extends VpnService implements Handler.Callback {
 
     public void checkConfigFile(final boolean updateFlag) {
         Log.w("MyVPNService", "download proxy rule file");
-        Thread.dumpStack();
+        //Thread.dumpStack();
         //new Thread(new Runnable() {
         //    @Override
         //    public void run() {
@@ -267,6 +268,7 @@ public class MyVpnService extends VpnService implements Handler.Callback {
 
                     if (updateFlag) {
                         downloadConfigFile(fos, in);
+                        Log.w("MyVPNService", "download proxy rule file completed");
                     }
                 } catch (FileNotFoundException e) {
                     e.printStackTrace();

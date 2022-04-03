@@ -10,10 +10,12 @@ public class HttpConnectConfig extends Config {
     public String UserName;
     public String Password;
 
-    public static HttpConnectConfig parse(String proxyInfo) {
+    public static HttpConnectConfig parse(String configname, String proxyInfo) {
         HttpConnectConfig config = new HttpConnectConfig();
         Uri uri = Uri.parse(proxyInfo);
         String userInfoString = uri.getUserInfo();
+        //Log.w("ProxyConfig", "userinfo is "+userInfoString
+        //+", host and port is "+uri.getHost()+" "+uri.getPort());
         if (userInfoString != null) {
             String[] userStrings = userInfoString.split(":");
             config.UserName = userStrings[0];
@@ -22,6 +24,7 @@ public class HttpConnectConfig extends Config {
             }
         }
         config.ServerAddress = new InetSocketAddress(uri.getHost(), uri.getPort());
+        config.ConfigName = configname;
         return config;
     }
 

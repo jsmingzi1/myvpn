@@ -8,6 +8,51 @@ import java.util.List;
 
 public class Tools {
 
+    public static int convertShortPortReadbleInt(short port)
+    {
+        if (port > 0)
+            return port;
+        else
+            return 65536+port;
+    }
+    public static String convertProtocolInt2Str(int pro) {
+        //protocol comes from NetSession
+        if (pro == 0)
+            return "HTTP";
+        if (pro == 1)
+            return "HTTPS";
+        if (pro == 2)
+            return "TCP";
+        if (pro == 3)
+            return "UDP";
+        return "";
+    }
+    public static byte[] ipTobytes(String ip) {
+        String[] ipStr = ip.split("\\.");
+        byte[] ipBuf = new byte[4];
+        for(int i = 0; i < 4; i++){
+            ipBuf[i] = (byte)(Integer.parseInt(ipStr[i])&0xff);
+        }
+        return ipBuf;
+    }
+    public static String bytesToHex(byte[] in, int len) {
+        final StringBuilder builder = new StringBuilder();
+        for (int i=0;i<len;i++) {
+            builder.append(String.format("%02x", in[i]));
+        }
+
+        return builder.toString();
+    }
+
+    public static String bytesToHex(byte[] in, int offset, int len) {
+        final StringBuilder builder = new StringBuilder();
+        for (int i=0;i<len;i++) {
+            builder.append(String.format("%02x", in[offset+i]));
+        }
+
+        return builder.toString();
+    }
+
     public static long partCksum(long initcksum, byte[] data, int offset, int length) {
         long cksum;
         int idx;

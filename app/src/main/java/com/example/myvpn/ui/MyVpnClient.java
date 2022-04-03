@@ -127,7 +127,7 @@ public class MyVpnClient extends AppCompatActivity {
     private void setButton4ServersList()
     {
         //first init the default vpn server
-        String servername = "No Invalidate Server!";
+        String servername = "Invalidate Server!";
         String strobj = prefs.getString(Prefs.JSON_SERVER, "");
         if (strobj != null && strobj.length() > 0) {
             try {

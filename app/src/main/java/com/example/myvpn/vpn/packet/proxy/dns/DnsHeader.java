@@ -33,12 +33,12 @@ public class DnsHeader {
         buffer.putShort(this.EResourceCount);
     }
 
-    static final short offset_ID = 0;
-    static final short offset_Flags = 2;
-    static final short offset_QuestionCount = 4;
-    static final short offset_ResourceCount = 6;
-    static final short offset_AResourceCount = 8;
-    static final short offset_EResourceCount = 10;
+    static final int offset_ID = 0;
+    static final int offset_Flags = 2;
+    static final int offset_QuestionCount = 4;
+    static final int offset_ResourceCount = 6;
+    static final int offset_AResourceCount = 8;
+    static final int offset_EResourceCount = 10;
 
     public byte[] Data;
     public int Offset;
@@ -48,27 +48,27 @@ public class DnsHeader {
         this.Data = data;
     }
 
-    public short getID() {
+    public int getID() {
         return CommonMethods.readShort(Data, Offset + offset_ID);
     }
 
-    public short getFlags() {
+    public int getFlags() {
         return CommonMethods.readShort(Data, Offset + offset_Flags);
     }
 
-    public short getQuestionCount() {
+    public int getQuestionCount() {
         return CommonMethods.readShort(Data, Offset + offset_QuestionCount);
     }
 
-    public short getResourceCount() {
+    public int getResourceCount() {
         return CommonMethods.readShort(Data, Offset + offset_ResourceCount);
     }
 
-    public short getAResourceCount() {
+    public int getAResourceCount() {
         return CommonMethods.readShort(Data, Offset + offset_AResourceCount);
     }
 
-    public short getEResourceCount() {
+    public int getEResourceCount() {
         return CommonMethods.readShort(Data, Offset + offset_EResourceCount);
     }
 

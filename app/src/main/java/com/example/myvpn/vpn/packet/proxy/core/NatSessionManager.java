@@ -11,12 +11,20 @@ public class NatSessionManager {
     static final long SESSION_TIMEOUT_NS = 60 * 1000000000L;
     static final ArrayMap<String, NatSession> Sessions = new ArrayMap<String, NatSession>();
 
-    public static NatSession getSession(String localip_localport) {
-        NatSession session = Sessions.get(localip_localport);
+    public static NatSession getSession(String remoteip_localport) {
+        NatSession session = Sessions.get(remoteip_localport);
         if (session != null) {
             session.LastNanoTime = System.nanoTime();
         }
-        return Sessions.get(localip_localport);
+        return session;
+    }
+
+    public static NatSession getSession(int removeip, short localport) {
+        NatSession session = Sessions.get(""+removeip+"-"+localport);
+        if (session != null) {
+            session.LastNanoTime = System.nanoTime();
+        }
+        return session;
     }
 
     public static int getSessionCount() {
@@ -46,7 +54,7 @@ public class NatSessionManager {
         Sessions.remove(localip_port);
     }
 
-    public static NatSession createSession(int localIP, short localPort, int remoteIP, short remotePort, int uid, byte[] data, int data_offset, int length) {
+    public static NatSession createSession(int localIP, short localPort, int remoteIP, short remotePort, int uid) {
         //if (Sessions.size() > MAX_SESSION_COUNT) {
         //    clearExpiredSessions(); // 清理过期的会话。
         //}
@@ -58,8 +66,6 @@ public class NatSessionManager {
         session.RemoteIP = remoteIP;
         session.RemotePort = remotePort;
         session.uid = uid;
-        session.firstData = new byte[length];
-        System.arraycopy(data, data_offset, session.firstData, 0, length);
 
         if (ProxyConfig.isFakeIP(remoteIP)) {
             session.RemoteHost = DnsProxy.reverseLookup(remoteIP);
@@ -72,7 +78,7 @@ public class NatSessionManager {
         if (session.RemoteHost == null) {
             session.RemoteHost = CommonMethods.ipIntToString(remoteIP);
         }
-        Sessions.put(""+localIP + "-" + localPort, session);
+        Sessions.put(""+remoteIP + "-" + localPort, session);
         return session;
     }
 }

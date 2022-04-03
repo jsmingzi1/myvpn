@@ -23,7 +23,7 @@ public class ResourcePointer {
         CommonMethods.writeShort(Data, Offset + offset_Domain, value);
     }
 
-    public short getType() {
+    public int getType() {
         return CommonMethods.readShort(Data, Offset + offset_Type);
     }
 
@@ -31,7 +31,7 @@ public class ResourcePointer {
         CommonMethods.writeShort(Data, Offset + offset_Type, value);
     }
 
-    public short getClass(short value) {
+    public int getClass(short value) {
         return CommonMethods.readShort(Data, Offset + offset_Class);
     }
 
@@ -47,7 +47,7 @@ public class ResourcePointer {
         CommonMethods.writeInt(Data, Offset + offset_TTL, value);
     }
 
-    public short getDataLength() {
+    public int getDataLength() {
         return CommonMethods.readShort(Data, Offset + offset_DataLength);
     }
 

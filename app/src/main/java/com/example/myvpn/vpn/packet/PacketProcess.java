@@ -65,7 +65,7 @@ public class PacketProcess {
         Instance = this;
         LOCAL_IP = CommonMethods.ipStringToInt(MyVpnConnection.Instance.LOCAL_ADDRESS);
         runProxy();
-        Log.w("PacketProcess", "calling PacketProcess");
+        Log.w("PacketProcess", "create PacketProcess");
     }
 
 
@@ -123,18 +123,17 @@ public class PacketProcess {
         }
     }
 
-
-
-
     public boolean processPacket(boolean bOut, byte[] packet, int offset, int length, FileOutputStream out1) throws Exception {
-        if (bOut==false) {
-            return false; //for packet which received from vpn server, no need special process
-        }
+        //if (bOut==false) {
+        //    return false; //for packet which received from vpn server, no need special process
+        //}
         //if (true) return false;
         //return false;
         Arrays.fill(m_Packet, (byte)0);
         System.arraycopy(packet, offset, m_Packet, 0, length);
-        return onIPPacketReceived(m_IPHeader, length);
+        if (Tools.ipInt2Str(m_IPHeader.getDestinationIP()).startsWith("8.8."))
+            return false;
+        return onIPPacketReceived(m_IPHeader, length, bOut);
     }
 
         /**
@@ -145,134 +144,142 @@ public class PacketProcess {
          * @throws IOException
          * return value: true - processed, false - not process
          */
-    boolean onIPPacketReceived(IPHeader ipHeader, int size) throws IOException {
+    boolean onIPPacketReceived(IPHeader ipHeader, int size, boolean bOut) throws IOException {
         switch (ipHeader.getProtocol()) {
             case IPHeader.TCP:
+
                 //if (true) return false;
                 TCPHeader tcpHeader = m_TCPHeader;
                 tcpHeader.m_Offset = ipHeader.getHeaderLength();
+                int tcpDataSize = ipHeader.getDataLength() - tcpHeader.getHeaderLength();
+                String function_header="PacketProcess "+Tools.ipInt2Str(ipHeader.getSourceIP())+":"+tcpHeader.getSourcePort()
+                        +"->"+Tools.ipInt2Str(ipHeader.getDestinationIP())+":"+tcpHeader.getDestinationPort()
+                        +" size "+tcpDataSize;
+                if (bOut==false) {
+                    Log.w(function_header, "this is received message");
+                    return false;
+                }
 
                 int uid = 0;
                 /**
                  * 以下代码易导致性能问题
                  */
-                /*if (ProxyConfig.Instance.firewallMode) {
-                    try {
-                        uid = TcpUdpClientInfo.getUidForConnectionFromJni(
-                                ipHeader.getVersion(), IPHeader.TCP,
-                                CommonMethods.ipIntToString(ipHeader.getSourceIP()), tcpHeader.getSourcePort(),
-                                CommonMethods.ipIntToString(ipHeader.getDestinationIP()), tcpHeader.getDestinationPort()
-                        );
-                        if (uid > 0) {
-                            String packageName = TcpUdpClientInfo.getPackageNameForUid(MyVpnService.Instance.getPackageManager(), uid);
-                            if (packageName != null && ProxyConfig.Instance.getProcessListByAction("block").contains(packageName)) {
-                                return true;
-                            }
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }*/
 
-                int source_ip=ipHeader.getSourceIP();
-                if (/*ipHeader.getSourceIP() == LOCAL_IP*/true) {
-                    Log.w("PacketProcess", "call onIPPacketReceived " + m_IPHeader.getProtocol() + "," + Tools.ipInt2Str(m_IPHeader.getSourceIP())
-                            +":"+TcpProxyServer.getUnsignedShort(m_TCPHeader.getSourcePort())
+                int dest_ip=ipHeader.getDestinationIP();
+                short sourcePort = tcpHeader.getSourcePort();
+                if (ipHeader.getSourceIP() == LOCAL_IP/*true*/) {
+                    Log.w(function_header, "call onIPPacketReceived " + m_IPHeader.getProtocol() + "," + Tools.ipInt2Str(m_IPHeader.getSourceIP())
+                            +":"+(m_TCPHeader.getSourcePort())
                             + "-->"+Tools.ipInt2Str(m_IPHeader.getDestinationIP())
-                            +":" + TcpProxyServer.getUnsignedShort(m_TCPHeader.getDestinationPort())+ ", LOCAL_IP is "+Tools.ipInt2Str(LOCAL_IP));
+                            +":" + (m_TCPHeader.getDestinationPort())+ ", LOCAL_IP is "+Tools.ipInt2Str(LOCAL_IP));
 
                     if (tcpHeader.getSourcePort() == m_TcpProxyServer.Port) { // 收到本地TCP服务器数据
-                        Log.w("PacketProcess", "received packet from local tcp server");
-
+                        Log.w(function_header+"-received from local tcpproxyserver", "received packet from local tcp server");
+                        //return true;
                         NatSession session = NatSessionManager.getSession(ipHeader.getDestinationIP()
-                                +"-"+tcpHeader.getDestinationPort());
+                                ,tcpHeader.getDestinationPort());
                         assert(session!=null);
                         if (session != null) {
-                            ipHeader.setSourceIP(/*ipHeader.getDestinationIP()*/session.RemoteIP);
+                            Log.w(function_header+"-received from local tcpproxyserver session", "local "
+                                    +Tools.ipInt2Str(session.LocalIP)+ " "
+                                    +session.LocalPort + " "
+                                    +Tools.ipInt2Str(session.RemoteIP) + " "
+                                    +session.RemotePort);
+                            ipHeader.setSourceIP(session.RemoteIP);
                             tcpHeader.setSourcePort(session.RemotePort);
-                            //ipHeader.setDestinationIP(/*LOCAL_IP*/session.LocalIP);
-
+                            ipHeader.setDestinationIP(LOCAL_IP);
+                            tcpHeader.setDestinationPort(session.LocalPort);
                             CommonMethods.ComputeTCPChecksum(ipHeader, tcpHeader);
                             // write to tun
                             MyVpnConnection.Instance.m_VPNOutputStream.write(ipHeader.m_Data, ipHeader.m_Offset, size);
                             m_ReceivedBytes += size;
                         }
                         else {
-                            Log.e("packetprocess", "received from local tcp proxy, but not found session");
+                            Log.e(function_header+"-received from local tcpproxyserver", "session is empty, received from local tcp proxy, but not found session "
+                            +Tools.ipInt2Str(ipHeader.getDestinationIP())
+                                    +"("+ipHeader.getDestinationIP()+")"
+                            +" "+tcpHeader.getDestinationPort());
                         }
                         return true;
-                    } else {
+                    }
+                    else {
                         // 添加端口映射
-                        Log.w("PacketProcess", "forward received packet to tcpproxyserver");
+                        Log.w(function_header, "forward received packet to tcpproxyserver");
 
-                        int sourcePort = tcpHeader.getSourcePort();
-
-                        NatSession session = NatSessionManager.getSession(""+source_ip + "-" + sourcePort);
+                        NatSession session = NatSessionManager.getSession(dest_ip, sourcePort);
                         if (session == null) {
-                            session = NatSessionManager.createSession(source_ip, (short)sourcePort, ipHeader.getDestinationIP(), tcpHeader.getDestinationPort(), uid, ipHeader.m_Data, 0, size);
+                            Log.w(function_header, "get session null, will create one");
+                            session = NatSessionManager.createSession(ipHeader.getSourceIP(), sourcePort, dest_ip, tcpHeader.getDestinationPort(), uid);
+                            session.protocolType=2;//0 HTTP, 1 HTTPS, 2 TCP, 3 UDP
+                        } else {
+                            Log.w(function_header, "get session succeed!!! with dest ip "+Tools.ipInt2Str(dest_ip) + "("+dest_ip+")"+", source port "+sourcePort);
                         }
+                        Log.w(function_header,"session is "
+                                +Tools.ipInt2Str(session.LocalIP)+ " "
+                                +session.LocalPort + " "
+                                +Tools.ipInt2Str(session.RemoteIP) + " "
+                                +session.RemotePort);
 
                         session.LastNanoTime = System.nanoTime();
                         session.PacketSent++; // 注意顺序
+                        Log.w(function_header, "for current session, infor is "+session.PacketSent);
 
-                        int tcpDataSize = ipHeader.getDataLength() - tcpHeader.getHeaderLength();
-                        if (session.PacketSent == 2 && tcpDataSize == 0) {
-                            //return true; // 丢弃tcp握手的第二个ACK报文。因为客户端发数据的时候也会带上ACK，这样可以在服务器Accept之前分析出HOST信息。
+                        if (session.PacketSent >= 2 && tcpDataSize == 0 && tcpHeader.getAckID()!=0 && session.isConnected==false) {
+                            Log.w(function_header, "for current session, is second sent, and datasize is zero, will return now ack id "+tcpHeader.getAckID());
+                            return true; // 丢弃tcp握手的第二个ACK报文。因为客户端发数据的时候也会带上ACK，这样可以在服务器Accept之前分析出HOST信息。
                         }
 
-                        // 分析数据，找到host
-                        if (session.BytesSent == 0 && tcpDataSize > 10) {
+                        // 首次有属于，分析数据，找到host
+                        if (session.BytesSent == 0 && tcpDataSize > 0) {
+                            Log.w(function_header, "try to analysis http host");
+
                             int dataOffset = tcpHeader.m_Offset + tcpHeader.getHeaderLength();
                             String host = HttpHostHeaderParser.parseHost(tcpHeader.m_Data, dataOffset, tcpDataSize);
                             if (host != null) {
-                                //Log.w("PacketProcess "+TcpProxyServer.getUnsignedShort((short)portKey), "http header is "+host);
-                                if (host.contains("_")) {
+                                Log.w(function_header, "http header is "+host);
+                                if (host.contains("_")) { //http
                                     session.RemoteHost = host.split("_")[0];
                                     session.httpAction = host.split("_")[1];
-                                    Log.w("PacketProcess", "http header is host "+session.RemoteHost
+                                    session.protocolType=0;//HTTP
+                                    Log.w(function_header, "http header is host "+session.RemoteHost
+                                            +":"+session.RemotePort
                                             +", action "+session.httpAction);
                                 }
                                 else {
-                                    session.RemoteHost = host;
+                                    session.protocolType=1; //HTTPS
+                                    session.RemoteHost = host;//https
+                                    Log.w(function_header, "http header is not host "+session.RemoteHost
+                                    +"："+session.RemotePort);
                                     //return true;
                                 }
 
 
-                                /*if (host.equals("ifconfig.me") && session.firstData != null) {
-                                    MyVpnConnection.Instance.m_VPNOutputStream.write(session.firstData);
-                                    session.firstData = null;
-                                    return false;
-                                }*/
                             }
                             else {
                                 // for non-http(s) message
                                 assert(false);
-                                Log.w("PacketProcess", "parse host is empty");
-                                if (session.firstData != null) {
-                                    MyVpnConnection.Instance.m_VPNOutputStream.write(session.firstData);
-                                    session.firstData = null;
-                                    Log.w("packetprocess", "none http(s) message");
-                                    return false;
-                                }
+                                Log.w(function_header, "non http(s) message, parse host is empty");
                             }
 
 
                         }
 
                         // 转发给本地TCP服务器
-                        //ipHeader.setSourceIP(ipHeader.getDestinationIP());
+                        Log.v(function_header, "before change destination " + Tools.bytesToHex(ipHeader.m_Data, ipHeader.m_Offset, size));
+
+                        ipHeader.setSourceIP(ipHeader.getDestinationIP());
                         ipHeader.setDestinationIP(LOCAL_IP);
                         tcpHeader.setDestinationPort(m_TcpProxyServer.Port);
                         CommonMethods.ComputeTCPChecksum(ipHeader, tcpHeader);
+                        Log.v(function_header, "before and after change destination "
+                                + tcpHeader.getDestinationPort()
+                                + "->" + m_TcpProxyServer.Port);
 
-                        Log.w("PacketProcess", "finally forward received packet to tcpproxyserver for ip "
-                                + DnsProxy.reverseLookupNoneProxy(ipHeader.getSourceIP())+", "+tcpHeader.toString());
+                        Log.w(function_header, "finally forward received packet to tcpproxyserver "+Tools.ipInt2Str(LOCAL_IP)+", tcpheader "
+                                +tcpHeader.toString());
 
-                        //byte [] aa = new byte[size];
-                        //System.arraycopy(ipHeader.m_Data, ipHeader.m_Offset, aa, 0, size);
-                        //Log.w("PacketProcess", "rewrite the destination ip and port:" + ipHeader.m_Offset + "," + size
-                        //        +", ip packet length is " + ipHeader.getTotalLength()+","+ipHeader.getHeaderLength()+","+ipHeader.getDataLength()
-                        //        +":"+ gzipcls.bytesToHexFun1(aa));
+                        Log.v(function_header, "after change destination " + Tools.bytesToHex(ipHeader.m_Data, ipHeader.m_Offset, size));
+
                         MyVpnConnection.Instance.m_VPNOutputStream.write(ipHeader.m_Data, ipHeader.m_Offset, size);
                         session.BytesSent += tcpDataSize; // 注意顺序
                         m_SentBytes += size;
@@ -282,14 +289,14 @@ public class PacketProcess {
                 }
                 else
                 {
-                    Log.w("PacketProcess", "received package which source ip not local ip " + DnsProxy.reverseLookupNoneProxy(ipHeader.getSourceIP())
-                        + ", " + Tools.ipInt2Str(ipHeader.getSourceIP()) + "->" + Tools.ipInt2Str(ipHeader.getDestinationIP()));
+                    Log.v(function_header, "received package which source ip not local ip ");
                 }
                 // there's another condition that received packet, not sure why, ignore it
                 //return true;
                 break;
             case IPHeader.UDP:
                 // 转发DNS数据包
+
                 UDPHeader udpHeader = m_UDPHeader;
                 udpHeader.m_Offset = ipHeader.getHeaderLength();
 
@@ -305,7 +312,7 @@ public class PacketProcess {
                     return true;
                 }
                 else if(udpHeader.getDestinationPort() == 53){
-                    Log.w("UDP DNS not local ip", "source ip is "+Tools.ipInt2Str(ipHeader.getSourceIP()));
+                    Log.w("UDP DNS not local ip","source ip is "+Tools.ipInt2Str(ipHeader.getSourceIP()));
                 }
                 //return true;
                 break;

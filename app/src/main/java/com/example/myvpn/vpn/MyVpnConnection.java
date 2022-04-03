@@ -17,12 +17,15 @@ package com.example.myvpn.vpn;
  */
 
 
+import static java.nio.charset.StandardCharsets.US_ASCII;
+
 import android.app.PendingIntent;
 import android.content.pm.PackageManager;
 import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 
+import com.example.myvpn.Tools;
 import com.example.myvpn.vpn.packet.PacketProcess;
 
 import java.io.FileInputStream;
@@ -35,8 +38,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-
-import static java.nio.charset.StandardCharsets.US_ASCII;
 
 public class MyVpnConnection implements Runnable {
     /**
@@ -95,7 +96,7 @@ public class MyVpnConnection implements Runnable {
     private final boolean mGlobal;
     private final Set<String> mPackages;
 
-    public String LOCAL_ADDRESS = "";
+    public String LOCAL_ADDRESS = "ABC";
     public FileOutputStream m_VPNOutputStream=null;
     public ParcelFileDescriptor m_VPNInterface=null;
 
@@ -163,16 +164,7 @@ public class MyVpnConnection implements Runnable {
         }
     }
 
-    public static String bytesToHex(byte[] in, int len) {
-        final StringBuilder builder = new StringBuilder();
-        for (int i=0;i<len;i++) {
-            builder.append(String.format("%02x", in[i]));
-        }
-        //for(byte b : in) {
-        //    builder.append(String.format("%02x", b));
-        //}
-        return builder.toString();
-    }
+
     private boolean run(SocketAddress server)
             throws IOException, InterruptedException, IllegalArgumentException {
         ParcelFileDescriptor iface = null;
@@ -268,7 +260,7 @@ public class MyVpnConnection implements Runnable {
                 // Read the incoming packet from the tunnel.
                 length = tunnel.read(packet);
                 if (length > 0) {
-                    //Log.i(getTag(), "lcm receive for Address is return "+length+","+bytesToHex(packet.array(), length));
+                    Log.i(getTag(), "lcm receive for Address is return "+length+","+ Tools.bytesToHex(packet.array(), length));
                     // Ignore control messages, which start with zero.
                     if (packet.get(0) != 0) {
                         //process http message

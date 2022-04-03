@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.util.Log;
 
 import com.example.myvpn.vpn.MyVpnService;
+import com.example.myvpn.vpn.packet.proxy.core.NatSession;
 import com.example.myvpn.vpn.packet.proxy.tunnel.httpconnect.HttpConnectTunnel;
 
 import java.io.IOException;
@@ -40,6 +41,7 @@ public abstract class Tunnel {
     protected InetSocketAddress m_DestAddress;
     public String TunnelType = "local"; //default is local, another is remote
     public long currentID  = 0;
+    public NatSession session=null;
 
 
     public Tunnel(SocketChannel innerChannel, Selector selector) {
