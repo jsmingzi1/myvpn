@@ -41,10 +41,11 @@ public class TcpProxyServer implements Runnable {
 
         m_ServerSocketChannel.register(m_Selector, SelectionKey.OP_ACCEPT);
         InetSocketAddress a = (InetSocketAddress) m_ServerSocketChannel.socket().getLocalSocketAddress();
-        Log.w(function_header, "m_ServerSocketChannel.socket() bind local address is:" + a.getAddress().getHostAddress()
-                +","+m_ServerSocketChannel.socket().isBound() + "," + m_ServerSocketChannel.socket().isClosed());
+
         this.Port = (short)m_ServerSocketChannel.socket().getLocalPort();
-        Log.w(function_header, "actual bind port is "+Port);
+        Log.w(function_header, "m_ServerSocketChannel.socket() bind local address is:" + a.getAddress().getHostAddress()
+                +","+m_ServerSocketChannel.socket().isBound() + "," + m_ServerSocketChannel.socket().isClosed()
+        + ", actual bind port is "+Port + " readable is "+Tools.convertShortPortReadbleInt(Port));
 
     }
 

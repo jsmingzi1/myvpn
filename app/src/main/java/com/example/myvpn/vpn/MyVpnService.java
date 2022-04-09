@@ -131,15 +131,17 @@ public class MyVpnService extends VpnService implements Handler.Callback {
 
         Set<String> packages =
                 prefs.getStringSet(MyVpnClient.Prefs.PACKAGES, Collections.emptySet());
-        String server;
-        int port;
-        try {
-            JSONObject obj = new JSONObject(prefs.getString(MyVpnClient.Prefs.JSON_SERVER, ""));
-            server = obj.getString("ip");
-            port = obj.getInt("port");
-        } catch (Exception e) {
-            Toast.makeText(this, "MyVPNService connect failed for invalid server ip or port.", Toast.LENGTH_SHORT).show();
-            return;
+        String server="";
+        int port=0;
+        if (bGlobal) { // only global mode, need connect vpn server
+            try {
+                JSONObject obj = new JSONObject(prefs.getString(MyVpnClient.Prefs.JSON_SERVER, ""));
+                server = obj.getString("ip");
+                port = obj.getInt("port");
+            } catch (Exception e) {
+                Toast.makeText(this, "MyVPNService connect failed for invalid server ip or port.", Toast.LENGTH_SHORT).show();
+                return;
+            }
         }
 
         Log.w("connect", "connect in myvpnservice global parameter is " + bGlobal + ", packages size is "+packages.size());

@@ -94,10 +94,13 @@ public class MyVpnConnection implements Runnable {
 
     // Allowed/Disallowed packages for VPN usage
     private final boolean mGlobal;
+    // for global mode, use vpn server;
+    // for app mode, no need vpn server, create fake local interface, and dispatch message to http proxy
     private final Set<String> mPackages;
 
     public String LOCAL_ADDRESS = "ABC";
     public FileOutputStream m_VPNOutputStream=null;
+    public FileInputStream m_VPNInputStream = null;
     public ParcelFileDescriptor m_VPNInterface=null;
 
 
@@ -133,30 +136,22 @@ public class MyVpnConnection implements Runnable {
     public void run() {
         try {
             Log.w(getTag(), "run Starting");
-
-            // If anything needs to be obtained using the network, get it now.
-            // This greatly reduces the complexity of seamless handover, which
-            // tries to recreate the tunnel without shutting down everything.
-            // In this demo, all we need to know is the server address.
-            final SocketAddress serverAddress = new InetSocketAddress(mServerName, mServerPort);
-
             //download config
             MyVpnService.Instance.checkConfigFile(true);
 
-
-
-            // We try to create the tunnel several times.
-            // TODO: The better way is to work with ConnectivityManager, trying only when the
-            // network is available.
-            // Here we just use a counter to keep things simple.
-            for (int attempt = 0; attempt < 10; ++attempt) {
-                // Reset the counter if we were connected.
-                if (run(serverAddress)) {
-                    attempt = 0;
+            if (mGlobal) {
+                // global mode
+                final SocketAddress serverAddress = new InetSocketAddress(mServerName, mServerPort);
+                for (int attempt = 0; attempt < 10; ++attempt) {
+                    // Reset the counter if we were connected.
+                    if (runGlobalMode(serverAddress)) {
+                        attempt = 0;
+                    }
+                    Thread.sleep(3000);
                 }
-
-                // Sleep for a while. This also checks if we got interrupted.
-                Thread.sleep(3000);
+            } else {
+                //App mode
+                runAppMode();
             }
             Log.w(getTag(), "Giving up");
         } catch (IOException | InterruptedException | IllegalArgumentException | IllegalStateException e) {
@@ -165,153 +160,116 @@ public class MyVpnConnection implements Runnable {
     }
 
 
-    private boolean run(SocketAddress server)
+    private boolean runGlobalMode(SocketAddress server)
             throws IOException, InterruptedException, IllegalArgumentException {
-        ParcelFileDescriptor iface = null;
         boolean connected = false;
         // Create a DatagramChannel as the VPN tunnel.
-        Log.w(getTag(), "lcm before try");
+        Log.w(getTag(), "runGlobalMode before try");
 
         try (DatagramChannel tunnel = DatagramChannel.open()) {
-
             // Protect the tunnel before connecting to avoid loopback.
             if (!mService.protect(tunnel.socket())) {
                 throw new IllegalStateException("Cannot protect the tunnel");
             }
-
-            //prefs.edit().putString(MyVpnClient.Prefs.CONNECT_STATUS, "Connecting").commit();
             // Connect to the server.
             tunnel.connect(server);
-
             // For simplicity, we use the same thread for both reading and
             // writing. Here we put the tunnel into non-blocking mode.
             tunnel.configureBlocking(false);
 
             // Authenticate and configure the virtual network interface.
-            iface = handshake(tunnel);
+            m_VPNInterface = handshake(tunnel);
 
             // Now we are connected. Set the flag.
             connected = true;
             Log.w(getTag(), "now is connected");
-            //reportCompletion("");
-            //prefs.edit().putString(MyVpnClient.Prefs.CONNECT_STATUS, "Connected").commit();
-            // Packets to be sent are queued in this input stream.
-            FileInputStream in = new FileInputStream(iface.getFileDescriptor());
-
+            m_VPNInputStream = new FileInputStream(m_VPNInterface.getFileDescriptor());
             // Packets received need to be written to this output stream.
-            FileOutputStream out = new FileOutputStream(iface.getFileDescriptor());
-            m_VPNInterface = iface;
-            m_VPNOutputStream = out;
+            m_VPNOutputStream = new FileOutputStream(m_VPNInterface.getFileDescriptor());
             // Allocate the buffer for a single packet.
             ByteBuffer packet = ByteBuffer.allocate(MAX_PACKET_SIZE);
 
-            //process packet
-            if (PacketProcess.Instance == null)
-                new PacketProcess();
+            //if (PacketProcess.Instance == null)
+            //    new PacketProcess();
 
-            // Timeouts:
-            //   - when data has not been sent in a while, send empty keepalive messages.
-            //   - when data has not been received in a while, assume the connection is broken.
-            long lastSendTime = System.currentTimeMillis();
-            long lastReceiveTime = System.currentTimeMillis();
-            Log.w(getTag(), "lcm before while");
-            // We keep forwarding packets till something goes wrong.
+
             while (true) {
-                // Assume that we did not make any progress in this iteration.
-                boolean idle = true;
-
-                boolean bProcessed = false;
                 // Read the outgoing packet from the input stream.
-                int length = in.read(packet.array());
+                int length = m_VPNInputStream.read(packet.array());
                 if (length > 0) {
-                    // Write the outgoing packet to the tunnel.
-                    //DatagramPacket dp = new DatagramPacket(packet.array(), length);
-                    //Log.i(getTag(), "lcm send for Address is "+length+","+bytesToHex(packet.array(), length));
-                    //Log.w(getTag(), "begin "+ length + " limit is "+packet.limit() + ", position is "+packet.position());
-                    try {
-                        bProcessed = PacketProcess.Instance.processPacket(true, packet.array(), 0, length, null);
+                    /*try {
+                        PacketProcess.Instance.processPacket(packet.array(), 0, length);
                     } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                    //Packet.IP ip = new Packet.IP(packet.array(), 0, length);
-                    //if (ip.protocol == 6) {
-                    //    if (Packet.TCP.isHTTP(packet.array(), ip.ihl, length-ip.ihl)) {
-                    //        Log.w(getTag(), "this is http request: " + Packet.TCP.getHttpHead(packet.array(), ip.ihl, length-ip.ihl));
-                    //    }
-                    //}
-                    //Log.w(getTag(), "middle1 limit is "+packet.limit() + ", position is "+packet.position());
-
+                        Log.w("MyVPNConnection", "PacketProcess.Instance.processPacket exception "+e);
+                    }*/
                     packet.limit(length);
-                    //Log.w(getTag(), "middle2 limit is "+packet.limit() + ", position is "+packet.position());
-
-                    if (bProcessed==false)
-                        tunnel.write(packet);
-                    //Log.w(getTag(), "middle3 limit is "+packet.limit() + ", position is "+packet.position());
-
+                    //tunnel.write(packet);
                     packet.clear();
-                    //Log.w(getTag(), "end limit is "+packet.limit() + ", position is "+packet.position());
-
-                    // There might be more outgoing packets.
-                    idle = false;
-                    lastSendTime = System.currentTimeMillis();
                 }
-                //Log.i(getTag(), "lcm 1Address is out");
-                //DatagramPacket dp = new DatagramPacket(packet, length);
                 // Read the incoming packet from the tunnel.
                 length = tunnel.read(packet);
                 if (length > 0) {
-                    Log.i(getTag(), "lcm receive for Address is return "+length+","+ Tools.bytesToHex(packet.array(), length));
-                    // Ignore control messages, which start with zero.
+                    Log.i("MyVpnConnection", "lcm receive for Address is return " + length + "," + Tools.bytesToHex(packet.array(), length));
                     if (packet.get(0) != 0) {
-                        //process http message
-                        try {
-                            bProcessed = PacketProcess.Instance.processPacket(false, packet.array(), 0, length, out);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            Log.w("myvpnconnection", "failed when processPacket "+e.toString());
-                        }
-
                         // Write the incoming packet to the output stream.
-                        if (bProcessed==false)
-                            out.write(packet.array(), 0, length);
-                    } else {
-                        Log.i("idle test", "receive one control msg.");
-                    }
-                    packet.clear();
-
-                    // There might be more incoming packets.
-                    idle = false;
-                    lastReceiveTime = System.currentTimeMillis();
-                }
-
-                // If we are idle or waiting for the network, sleep for a
-                // fraction of time to avoid busy looping.
-                /*if (idle) {
-                    Thread.sleep(IDLE_INTERVAL_MS);
-                    final long timeNow = System.currentTimeMillis();
-
-                    if (lastSendTime + KEEPALIVE_INTERVAL_MS <= timeNow) {
-                        // We are receiving for a long time but not sending.
-                        // Send empty control messages.
-                        packet.put((byte) 0).limit(1);
-                        for (int i = 0; i < 3; ++i) {
-                            packet.position(0);
-                            tunnel.write(packet);
-                        }
+                        m_VPNOutputStream.write(packet.array(), 0, length);
                         packet.clear();
-                        lastSendTime = timeNow;
-                    } else if (lastReceiveTime + RECEIVE_TIMEOUT_MS <= timeNow) {
-                        // We are sending for a long time but not receiving.
-                        throw new IllegalStateException("1Timed out");
                     }
-                }*/
+                }
             }
         } catch (SocketException e) {
+            Log.e("MyVpnConnection", "Cannot use socket", e);
+        } finally {
+            if (m_VPNInterface != null) {
+                try {
+                    m_VPNInterface.close();
+                } catch (IOException e) {
+                    Log.e("MyVpnConnection", "Unable to close interface", e);
+                }
+            }
+            m_VPNOutputStream = null;
+            m_VPNInterface = null;
+
+            synchronized (mService) {
+                if (mOnEstablishListener != null) {
+                    mOnEstablishListener.onDisestablish(m_VPNInterface);
+                    Log.w(getTag(), "disconnect in run function/timeout");
+                }
+            }
+        }
+        return connected;
+    }
+
+
+
+    private boolean runAppMode() // here for app mode, above run function for global mode
+            throws IOException, InterruptedException, IllegalArgumentException {
+                Log.w(getTag(), "runAppMode before try");
+                m_VPNInterface = configure("m,1400 a,10.0.0.22,32 d,8.8.8.8 r,0.0.0.0,0");;
+
+        try {
+
+            m_VPNInputStream = new FileInputStream(m_VPNInterface.getFileDescriptor());
+            m_VPNOutputStream = new FileOutputStream(m_VPNInterface.getFileDescriptor());
+            ByteBuffer packet = ByteBuffer.allocate(MAX_PACKET_SIZE);
+
+            if (PacketProcess.Instance == null)
+                new PacketProcess();
+
+            while (true) {
+                int length = m_VPNInputStream.read(packet.array());
+                if (length > 0) {
+                    PacketProcess.Instance.processPacket(packet.array(), 0, length);
+                    packet.limit(length);
+                    packet.clear();
+                }
+            }
+        } catch (Exception e) {
             Log.e(getTag(), "Cannot use socket", e);
         } finally {
-            if (iface != null) {
+            if (m_VPNInterface != null) {
                 try {
-                    iface.close();
+                    m_VPNInterface.close();
                 } catch (IOException e) {
                     Log.e(getTag(), "Unable to close interface", e);
                 }
@@ -321,12 +279,11 @@ public class MyVpnConnection implements Runnable {
 
             synchronized (mService) {
                 if (mOnEstablishListener != null) {
-                    mOnEstablishListener.onDisestablish(iface);
-                    Log.w(getTag(), "disconnect in run function/timeout");
+                    mOnEstablishListener.onDisestablish(m_VPNInterface);
                 }
             }
         }
-        return connected;
+        return true;
     }
 
     private ParcelFileDescriptor handshake(DatagramChannel tunnel)
@@ -368,6 +325,7 @@ public class MyVpnConnection implements Runnable {
 
     private ParcelFileDescriptor configure(String parameters) throws IllegalArgumentException {
         // Configure a builder while parsing the parameters.
+        Log.w("MyVPNConnection", "configure parameters are "+parameters);
         VpnService.Builder builder = mService.new Builder();
         for (String parameter : parameters.split(" ")) {
             String[] fields = parameter.split(",");
@@ -424,6 +382,6 @@ public class MyVpnConnection implements Runnable {
     }
 
     private final String getTag() {
-        return MyVpnConnection.class.getSimpleName() + "[" + mConnectionId + "]";
+        return MyVpnConnection.class.getSimpleName();
     }
 }

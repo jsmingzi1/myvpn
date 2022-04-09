@@ -22,7 +22,6 @@ import com.google.common.base.Splitter;
 import org.apache.commons.io.IOUtils;
 
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -123,17 +122,10 @@ public class PacketProcess {
         }
     }
 
-    public boolean processPacket(boolean bOut, byte[] packet, int offset, int length, FileOutputStream out1) throws Exception {
-        //if (bOut==false) {
-        //    return false; //for packet which received from vpn server, no need special process
-        //}
-        //if (true) return false;
-        //return false;
+    public boolean processPacket(byte[] packet, int offset, int length) throws Exception {
         Arrays.fill(m_Packet, (byte)0);
         System.arraycopy(packet, offset, m_Packet, 0, length);
-        if (Tools.ipInt2Str(m_IPHeader.getDestinationIP()).startsWith("8.8."))
-            return false;
-        return onIPPacketReceived(m_IPHeader, length, bOut);
+        return onIPPacketReceived(m_IPHeader, length);
     }
 
         /**
@@ -144,22 +136,18 @@ public class PacketProcess {
          * @throws IOException
          * return value: true - processed, false - not process
          */
-    boolean onIPPacketReceived(IPHeader ipHeader, int size, boolean bOut) throws IOException {
+    boolean onIPPacketReceived(IPHeader ipHeader, int size) throws IOException {
         switch (ipHeader.getProtocol()) {
             case IPHeader.TCP:
 
-                //if (true) return false;
                 TCPHeader tcpHeader = m_TCPHeader;
                 tcpHeader.m_Offset = ipHeader.getHeaderLength();
                 int tcpDataSize = ipHeader.getDataLength() - tcpHeader.getHeaderLength();
-                String function_header="PacketProcess "+Tools.ipInt2Str(ipHeader.getSourceIP())+":"+tcpHeader.getSourcePort()
-                        +"->"+Tools.ipInt2Str(ipHeader.getDestinationIP())+":"+tcpHeader.getDestinationPort()
+                String function_header="PacketProcess "+Tools.ipInt2Str(ipHeader.getSourceIP())+":"+Tools.convertShortPortReadbleInt(tcpHeader.getSourcePort())
+                        +"->"+Tools.ipInt2Str(ipHeader.getDestinationIP())+":"+Tools.convertShortPortReadbleInt(tcpHeader.getDestinationPort())
                         +" size "+tcpDataSize;
-                if (bOut==false) {
-                    Log.w(function_header, "this is received message");
-                    return false;
-                }
 
+                Log.w(function_header, "process tcp message");
                 int uid = 0;
                 /**
                  * 以下代码易导致性能问题
@@ -174,8 +162,8 @@ public class PacketProcess {
                             +":" + (m_TCPHeader.getDestinationPort())+ ", LOCAL_IP is "+Tools.ipInt2Str(LOCAL_IP));
 
                     if (tcpHeader.getSourcePort() == m_TcpProxyServer.Port) { // 收到本地TCP服务器数据
-                        Log.w(function_header+"-received from local tcpproxyserver", "received packet from local tcp server");
-                        //return true;
+                        Log.w(function_header, "received packet from local tcp server");
+
                         NatSession session = NatSessionManager.getSession(ipHeader.getDestinationIP()
                                 ,tcpHeader.getDestinationPort());
                         assert(session!=null);
@@ -226,7 +214,7 @@ public class PacketProcess {
 
                         if (session.PacketSent >= 2 && tcpDataSize == 0 && tcpHeader.getAckID()!=0 && session.isConnected==false) {
                             Log.w(function_header, "for current session, is second sent, and datasize is zero, will return now ack id "+tcpHeader.getAckID());
-                            return true; // 丢弃tcp握手的第二个ACK报文。因为客户端发数据的时候也会带上ACK，这样可以在服务器Accept之前分析出HOST信息。
+                            //return true; // 丢弃tcp握手的第二个ACK报文。因为客户端发数据的时候也会带上ACK，这样可以在服务器Accept之前分析出HOST信息。
                         }
 
                         // 首次有属于，分析数据，找到host
@@ -296,9 +284,11 @@ public class PacketProcess {
                 break;
             case IPHeader.UDP:
                 // 转发DNS数据包
-
                 UDPHeader udpHeader = m_UDPHeader;
                 udpHeader.m_Offset = ipHeader.getHeaderLength();
+                String function_header1="PacketProcess UDP "+Tools.ipInt2Str(ipHeader.getSourceIP())+":"+udpHeader.getSourcePort()
+                        +"->"+Tools.ipInt2Str(ipHeader.getDestinationIP())+":"+udpHeader.getDestinationPort();
+                Log.v(function_header1, "receive udp message");
 
                 if (ipHeader.getSourceIP() == LOCAL_IP && udpHeader.getDestinationPort() == 53) {
 

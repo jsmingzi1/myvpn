@@ -135,7 +135,7 @@ public class ServersActivity extends AppCompatActivity {
         JSONArray GetServersList() {
             OkHttpClient client = new OkHttpClient();
             Request request = new Request.Builder()
-                    .url("http://backchina.live:5000/api/v1/servers/all")
+                    .url("http://47.102.185.8:5000/api/v1/servers/all")
                     .build();
             Response responses = null;
             JSONArray Jarray = null;

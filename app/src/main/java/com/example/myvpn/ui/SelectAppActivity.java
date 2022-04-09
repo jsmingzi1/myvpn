@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
@@ -206,7 +207,9 @@ public class SelectAppActivity extends AppCompatActivity {
             //}
             //assert(ai!=null);
             //组件一拿到，开始组装
-            //Log.e("ai title view is", ai.loadLabel(getPackageManager()).toString());
+            if (ai.loadLabel(getPackageManager())==null)
+                return null;
+            Log.e("ai title view is", ai.loadLabel(getPackageManager()).toString());
             title_view.setText(ai.loadLabel(getPackageManager()).toString());
             title_view.setMaxWidth(800);
             title_view.setMaxLines(1);

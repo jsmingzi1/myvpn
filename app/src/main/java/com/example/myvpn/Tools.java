@@ -15,6 +15,10 @@ public class Tools {
         else
             return 65536+port;
     }
+    public static String getIPFromDomain(String domain) {
+
+        return "";
+    }
     public static String convertProtocolInt2Str(int pro) {
         //protocol comes from NetSession
         if (pro == 0)
