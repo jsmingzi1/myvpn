@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.SearchView;
@@ -22,6 +23,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.myvpn.R;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
@@ -93,7 +96,7 @@ public class SelectAppActivity extends AppCompatActivity {
                     TextView content = (TextView) listitem.findViewById(R.id.item_content);
                     if (box.isChecked()) {
                         SelectedPackages.add(content.getText().toString());
-                        //Log.e("ERROR", "selectappactivity for "+content.getText().toString());
+                        Log.e("ERROR", "selectappactivity for "+content.getText().toString());
                     }
 
                 }
@@ -136,6 +139,9 @@ public class SelectAppActivity extends AppCompatActivity {
             this.context = context;
             this.dataList = dataList;
             this.selectedString = selectedStr;
+            Collections.sort(dataList, new AscendingComparator());
+            this.notifyDataSetChanged();
+            //Log.d("hightolow", "sortAscending" + productList);
 
         }
 
@@ -164,6 +170,7 @@ public class SelectAppActivity extends AppCompatActivity {
 
         @Override
         public Object getItem(int position) {
+            Log.e("selectappactivity", "get item is "+position);
             int count = 0;
             Iterator<ApplicationInfo> it = dataList.iterator();
             while (it.hasNext()) {
@@ -191,7 +198,8 @@ public class SelectAppActivity extends AppCompatActivity {
 
         @Override
         public long getItemId(int position) {
-            return position;
+            Log.e("selectappactivity", "get item id is "+position);
+            return 0;//position;
         }
 
         @Override
@@ -214,14 +222,32 @@ public class SelectAppActivity extends AppCompatActivity {
             title_view.setMaxWidth(800);
             title_view.setMaxLines(1);
             content_view.setText(ai.packageName);
+            box.setTag(ai.packageName);
+            box.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    CheckBox b = (CheckBox) buttonView;
+                    Log.e("selectappactivity", "onCheckedChanged is called "+b.getTag());
+
+                    if (isChecked != selectedString.contains(b.getTag())) {
+                        if (isChecked)
+                            selectedString.add(b.getTag().toString());
+                        else
+                            selectedString.remove(b.getTag().toString());
+
+                        Collections.sort(dataList, new AscendingComparator());
+                        SelectAppListAdapter.this.notifyDataSetChanged();
+                    }
+                }
+            });
+
             //itemImg.setBackgroundResource(icons[position]);
             itemImg.setBackground(getPackageManager().getApplicationIcon(ai));
             for (int i=0; i<selectedString.size(); i++)
             {
                 //Log.e("ERROR", "try checked for "+selectedString.get(i)+"," + dataList.get(position).packageName);
-                if (selectedString.get(i).equals(ai.packageName)) {
+                if (selectedString.contains(ai.packageName)) {
                     box.setChecked(true);
-                    //Log.e("ERROR", "set checked for "+selectedString.get(i));
                 }
 
             }
@@ -229,7 +255,24 @@ public class SelectAppActivity extends AppCompatActivity {
             return view;
         }
 
+        //inner class to compare items
+        class AscendingComparator implements Comparator<ApplicationInfo> {
+            @Override
+            public int compare(ApplicationInfo p1, ApplicationInfo p2) {
+                int i1 = selectedString.indexOf(p1.packageName);
+                int i2 = selectedString.indexOf(p2.packageName);
+                if (i1 >= 0 && i2 >= 0) {
+                    return p2.packageName.compareTo(p1.packageName);
+                }
+                else if (i2>i1)
+                    return 1;
+                else
+                    return -1;
+            }
+        }
+
     }
+
 
 }
 

@@ -20,7 +20,6 @@ package com.example.myvpn.vpn;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 
 import android.app.PendingIntent;
-import android.content.pm.PackageManager;
 import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
@@ -154,14 +153,14 @@ public class MyVpnConnection implements Runnable {
                 runAppMode();
             }
             Log.w(getTag(), "Giving up");
-        } catch (IOException | InterruptedException | IllegalArgumentException | IllegalStateException e) {
+        } catch (Exception e) {
             Log.e(getTag(), "Connection failed, exiting", e);
         }
     }
 
 
     private boolean runGlobalMode(SocketAddress server)
-            throws IOException, InterruptedException, IllegalArgumentException {
+            throws Exception {
         boolean connected = false;
         // Create a DatagramChannel as the VPN tunnel.
         Log.w(getTag(), "runGlobalMode before try");
@@ -243,7 +242,7 @@ public class MyVpnConnection implements Runnable {
 
 
     private boolean runAppMode() // here for app mode, above run function for global mode
-            throws IOException, InterruptedException, IllegalArgumentException {
+            throws Exception {
                 Log.w(getTag(), "runAppMode before try");
                 m_VPNInterface = configure("m,1400 a,10.0.0.22,32 d,8.8.8.8 r,0.0.0.0,0");
 
@@ -287,7 +286,7 @@ public class MyVpnConnection implements Runnable {
     }
 
     private ParcelFileDescriptor handshake(DatagramChannel tunnel)
-            throws IOException, InterruptedException {
+            throws Exception {
         // To build a secured tunnel, we should perform mutual authentication
         // and exchange session keys for encryption. To keep things simple in
         // this demo, we just send the shared secret in plaintext and wait
@@ -323,7 +322,7 @@ public class MyVpnConnection implements Runnable {
         throw new IOException("2Timed out");
     }
 
-    private ParcelFileDescriptor configure(String parameters) throws IllegalArgumentException {
+    private ParcelFileDescriptor configure(String parameters) throws Exception {
         // Configure a builder while parsing the parameters.
         Log.w("MyVPNConnection", "configure parameters are "+parameters);
         VpnService.Builder builder = mService.new Builder();
@@ -358,14 +357,11 @@ public class MyVpnConnection implements Runnable {
 
         Log.w("myvpnconnevtion", "global parameter is " + mGlobal);
         if (mGlobal == false) {
+            builder.addAllowedApplication("com.example.myvpn"); // add itsself
             for (String packageName : mPackages) {
-                try {
                     Log.e(getTag(), "allow app parameters!!!!" + packageName);
-                        builder.addAllowedApplication(packageName);
-                        //Toast.makeText(mService, "allow apps", Toast.LENGTH_SHORT).show();
-                } catch (PackageManager.NameNotFoundException e){
-                    Log.w(getTag(), "Package not available: " + packageName, e);
-                }
+                    builder.addAllowedApplication(packageName);
+                    //Toast.makeText(mService, "allow apps", Toast.LENGTH_SHORT).show();
             }
         }
 

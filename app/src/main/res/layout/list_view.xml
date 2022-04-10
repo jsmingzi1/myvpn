@@ -23,7 +23,7 @@
                 android:layout_height="wrap_content"
                 android:textAlignment="textStart"
                 android:text="标题"
-                android:textColor="#F00"
+                android:textColor="#009688"
                 android:textSize="20sp" />
 
             <TextView
