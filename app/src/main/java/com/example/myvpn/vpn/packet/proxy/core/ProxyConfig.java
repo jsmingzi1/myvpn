@@ -242,7 +242,7 @@ public class ProxyConfig {
         //if (true) return "direct";
 
         int ruleIdx, itemIdx;
-        if (m_AllRules ==null) {
+        if (m_AllRules == null || m_AllRules.size() == 0) {
             Log.w("ProxyConfig", "getAction m_AllRules is empty!!!");
             return "direct";
         }

@@ -131,6 +131,7 @@ public class MyVpnService extends VpnService implements Handler.Callback {
 
         Set<String> packages =
                 prefs.getStringSet(MyVpnClient.Prefs.PACKAGES, Collections.emptySet());
+        packages.add("com.example.myvpn"); //add itsself for connection
         String server="";
         int port=0;
         if (bGlobal) { // only global mode, need connect vpn server

@@ -245,7 +245,7 @@ public class MyVpnConnection implements Runnable {
     private boolean runAppMode() // here for app mode, above run function for global mode
             throws IOException, InterruptedException, IllegalArgumentException {
                 Log.w(getTag(), "runAppMode before try");
-                m_VPNInterface = configure("m,1400 a,10.0.0.22,32 d,8.8.8.8 r,0.0.0.0,0");;
+                m_VPNInterface = configure("m,1400 a,10.0.0.22,32 d,8.8.8.8 r,0.0.0.0,0");
 
         try {
 

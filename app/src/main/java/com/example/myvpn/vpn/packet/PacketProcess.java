@@ -214,7 +214,7 @@ public class PacketProcess {
 
                         if (session.PacketSent >= 2 && tcpDataSize == 0 && tcpHeader.getAckID()!=0 && session.isConnected==false) {
                             Log.w(function_header, "for current session, is second sent, and datasize is zero, will return now ack id "+tcpHeader.getAckID());
-                            //return true; // 丢弃tcp握手的第二个ACK报文。因为客户端发数据的时候也会带上ACK，这样可以在服务器Accept之前分析出HOST信息。
+                            return true; // 丢弃tcp握手的第二个ACK报文。因为客户端发数据的时候也会带上ACK，这样可以在服务器Accept之前分析出HOST信息。
                         }
 
                         // 首次有属于，分析数据，找到host
